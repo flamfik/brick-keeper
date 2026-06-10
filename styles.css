@@ -109,11 +109,22 @@ footer {
 }
 
 .site-header {
-  height: 88px;
+  position: sticky;
+  top: 14px;
+  z-index: 90;
+  min-height: 72px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid var(--line);
+  gap: 16px;
+  margin-top: 14px;
+  padding: 12px 14px 12px 18px;
+  border: 1px solid rgb(217 216 209 / 88%);
+  border-radius: 8px;
+  background: rgb(255 253 249 / 88%);
+  box-shadow: 0 12px 34px rgb(23 33 30 / 12%);
+  backdrop-filter: blur(16px) saturate(130%);
+  -webkit-backdrop-filter: blur(16px) saturate(130%);
 }
 
 .brand {
@@ -947,7 +958,10 @@ dialog::backdrop {
   }
 
   .site-header {
-    height: 72px;
+    top: 8px;
+    min-height: 62px;
+    margin-top: 8px;
+    padding: 8px 9px 8px 12px;
   }
 
   .brand {
@@ -956,6 +970,22 @@ dialog::backdrop {
 
   .header-actions .button span {
     display: none;
+  }
+
+  .header-actions {
+    flex: 0 0 auto;
+    gap: 7px;
+  }
+
+  .language-picker select {
+    min-width: 62px;
+    padding-block: 9px;
+  }
+
+  .header-actions .button {
+    min-width: 42px;
+    min-height: 42px;
+    padding: 9px;
   }
 
   .hero {
