@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f5f3ee">
+    <meta
+      name="description"
+      content="Brick Keeper - szybki, lokalny organizer kolekcji klocków LEGO."
+    >
+    <title>Brick Keeper</title>
+    <link rel="preload" href="styles.css" as="style">
+    <link rel="stylesheet" href="styles.css">
+    <script type="module" src="js/app.js"></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#inventory" data-i18n="skipToInventory">
+      Przejdź do kolekcji
+    </a>
+
+    <svg class="icon-sprite" aria-hidden="true">
+      <symbol id="icon-search" viewBox="0 0 24 24">
+        <circle cx="11" cy="11" r="7"></circle>
+        <path d="m20 20-4-4"></path>
+      </symbol>
+      <symbol id="icon-plus" viewBox="0 0 24 24">
+        <path d="M12 5v14M5 12h14"></path>
+      </symbol>
+      <symbol id="icon-grid" viewBox="0 0 24 24">
+        <rect x="4" y="4" width="6" height="6" rx="1"></rect>
+        <rect x="14" y="4" width="6" height="6" rx="1"></rect>
+        <rect x="4" y="14" width="6" height="6" rx="1"></rect>
+        <rect x="14" y="14" width="6" height="6" rx="1"></rect>
+      </symbol>
+      <symbol id="icon-box" viewBox="0 0 24 24">
+        <path d="m4 7 8-4 8 4-8 4-8-4Z"></path>
+        <path d="m4 7 8 4v10l-8-4V7Zm16 0-8 4v10l8-4V7Z"></path>
+      </symbol>
+      <symbol id="icon-download" viewBox="0 0 24 24">
+        <path d="M12 3v12m-5-5 5 5 5-5M5 21h14"></path>
+      </symbol>
+      <symbol id="icon-upload" viewBox="0 0 24 24">
+        <path d="M12 16V4m-5 5 5-5 5 5M5 20h14"></path>
+      </symbol>
+      <symbol id="icon-edit" viewBox="0 0 24 24">
+        <path d="m14 5 5 5M4 20l3.5-.7L19 7.8 16.2 5 4.7 16.5 4 20Z"></path>
+      </symbol>
+      <symbol id="icon-trash" viewBox="0 0 24 24">
+        <path d="M4 7h16M9 7V4h6v3m3 0-1 14H7L6 7m4 4v6m4-6v6"></path>
+      </symbol>
+      <symbol id="icon-close" viewBox="0 0 24 24">
+        <path d="m6 6 12 12M18 6 6 18"></path>
+      </symbol>
+      <symbol id="icon-chevron" viewBox="0 0 24 24">
+        <path d="m8 10 4 4 4-4"></path>
+      </symbol>
+    </svg>
+
+    <header class="site-header">
+      <a class="brand" href="#" aria-label="Brick Keeper">
+        <span class="brand-mark" aria-hidden="true">
+          <span></span><span></span><span></span><span></span>
+        </span>
+        <span>BRICK<span>KEEPER</span></span>
+      </a>
+
+      <div class="header-actions">
+        <label class="language-picker">
+          <span class="visually-hidden" data-i18n="language">Język</span>
+          <select id="language-select" aria-label="Język">
+            <option value="pl">PL</option>
+            <option value="en">EN</option>
+            <option value="es">ES</option>
+          </select>
+          <svg class="icon" aria-hidden="true"><use href="#icon-chevron"></use></svg>
+        </label>
+        <button class="button button-primary" id="add-brick-button" type="button">
+          <svg class="icon" aria-hidden="true"><use href="#icon-plus"></use></svg>
+          <span data-i18n="addBrick">Dodaj klocek</span>
+        </button>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero" aria-labelledby="page-title">
+        <div>
+          <p class="eyebrow" data-i18n="eyebrow">Twoja kolekcja. Pod kontrolą.</p>
+          <h1 id="page-title" data-i18n="pageTitle">Klocki, które masz.<br>Kreatywność bez granic.</h1>
+          <p class="hero-copy" data-i18n="heroCopy">
+            Porządkuj, wyszukuj i rozwijaj swoją kolekcję bez chaosu.
+          </p>
+        </div>
+        <div class="hero-bricks" aria-hidden="true">
+          <div class="display-brick brick-red"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+          <div class="display-brick brick-yellow"><i></i><i></i><i></i><i></i></div>
+          <div class="display-brick brick-blue"><i></i><i></i><i></i><i></i></div>
+        </div>
+      </section>
+
+      <section class="stats" aria-label="Podsumowanie kolekcji">
+        <article class="stat-card stat-card-accent">
+          <span class="stat-icon"><svg class="icon"><use href="#icon-grid"></use></svg></span>
+          <div>
+            <strong id="stat-parts">0</strong>
+            <span data-i18n="uniqueParts">unikalnych części</span>
+          </div>
+        </article>
+        <article class="stat-card">
+          <span class="stat-icon"><svg class="icon"><use href="#icon-box"></use></svg></span>
+          <div>
+            <strong id="stat-items">0</strong>
+            <span data-i18n="totalItems">klocków łącznie</span>
+          </div>
+        </article>
+        <article class="stat-card">
+          <span class="color-dots" id="color-dots" aria-hidden="true"></span>
+          <div>
+            <strong id="stat-colors">0</strong>
+            <span data-i18n="colors">kolorów</span>
+          </div>
+        </article>
+      </section>
+
+      <section class="inventory-section" id="inventory" aria-labelledby="inventory-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow" data-i18n="inventoryEyebrow">Inwentarz</p>
+            <h2 id="inventory-title" data-i18n="yourBricks">Twoje klocki</h2>
+          </div>
+          <div class="data-actions">
+            <button class="button button-secondary" id="import-button" type="button">
+              <svg class="icon"><use href="#icon-upload"></use></svg>
+              <span data-i18n="import">Importuj</span>
+            </button>
+            <button class="button button-secondary" id="export-button" type="button">
+              <svg class="icon"><use href="#icon-download"></use></svg>
+              <span data-i18n="export">Eksportuj</span>
+            </button>
+            <input id="file-input" type="file" accept="application/json,.json" hidden>
+          </div>
+        </div>
+
+        <div class="toolbar">
+          <label class="search-field">
+            <svg class="icon"><use href="#icon-search"></use></svg>
+            <span class="visually-hidden" data-i18n="search">Szukaj</span>
+            <input
+              id="search-input"
+              type="search"
+              autocomplete="off"
+              data-i18n-placeholder="searchPlaceholder"
+              placeholder="Szukaj po nazwie lub numerze..."
+            >
+            <kbd>⌘ K</kbd>
+          </label>
+          <label class="select-field">
+            <span class="visually-hidden" data-i18n="category">Kategoria</span>
+            <select id="category-filter">
+              <option value="" data-i18n="allCategories">Wszystkie kategorie</option>
+            </select>
+            <svg class="icon"><use href="#icon-chevron"></use></svg>
+          </label>
+          <label class="select-field">
+            <span class="visually-hidden" data-i18n="color">Kolor</span>
+            <select id="color-filter">
+              <option value="" data-i18n="allColors">Wszystkie kolory</option>
+            </select>
+            <svg class="icon"><use href="#icon-chevron"></use></svg>
+          </label>
+          <label class="select-field">
+            <span class="visually-hidden" data-i18n="sort">Sortowanie</span>
+            <select id="sort-select">
+              <option value="name" data-i18n="sortName">Nazwa A-Z</option>
+              <option value="quantity-desc" data-i18n="sortQuantity">Największa ilość</option>
+              <option value="recent" data-i18n="sortRecent">Ostatnio dodane</option>
+            </select>
+            <svg class="icon"><use href="#icon-chevron"></use></svg>
+          </label>
+        </div>
+
+        <div class="results-meta" aria-live="polite">
+          <span id="results-count"></span>
+          <button class="text-button" id="clear-filters" type="button" data-i18n="clearFilters">
+            Wyczyść filtry
+          </button>
+        </div>
+
+        <div class="brick-grid" id="brick-grid"></div>
+
+        <div class="empty-state" id="empty-state" hidden>
+          <span class="empty-brick" aria-hidden="true"></span>
+          <h3 data-i18n="emptyTitle">Nie znaleziono klocków</h3>
+          <p data-i18n="emptyCopy">Zmień filtry albo dodaj nowy element do kolekcji.</p>
+          <button class="button button-primary" id="empty-add-button" type="button">
+            <svg class="icon"><use href="#icon-plus"></use></svg>
+            <span data-i18n="addBrick">Dodaj klocek</span>
+          </button>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <a class="brand brand-small" href="#" aria-label="Brick Keeper">
+        <span class="brand-mark" aria-hidden="true">
+          <span></span><span></span><span></span><span></span>
+        </span>
+        <span>BRICK<span>KEEPER</span></span>
+      </a>
+      <p data-i18n="footerText">Zbudowane dla kolekcjonerów. Dane zostają w Twojej przeglądarce.</p>
+    </footer>
+
+    <dialog id="brick-dialog" aria-labelledby="dialog-title">
+      <form id="brick-form">
+        <div class="dialog-heading">
+          <div>
+            <p class="eyebrow" data-i18n="brickDetails">Szczegóły elementu</p>
+            <h2 id="dialog-title" data-i18n="newBrick">Nowy klocek</h2>
+          </div>
+          <button class="icon-button" id="close-dialog" type="button" aria-label="Zamknij">
+            <svg class="icon"><use href="#icon-close"></use></svg>
+          </button>
+        </div>
+
+        <input id="brick-id" name="id" type="hidden">
+        <div class="form-grid">
+          <label class="field field-wide">
+            <span data-i18n="name">Nazwa</span>
+            <input id="brick-name" name="name" type="text" maxlength="80" required>
+          </label>
+          <label class="field">
+            <span data-i18n="partNumber">Numer części</span>
+            <input id="brick-part-number" name="partNumber" type="text" maxlength="30" required>
+          </label>
+          <label class="field">
+            <span data-i18n="quantity">Ilość</span>
+            <input id="brick-quantity" name="quantity" type="number" min="0" max="99999" value="1" required>
+          </label>
+          <label class="field">
+            <span data-i18n="category">Kategoria</span>
+            <select id="brick-category" name="category" required></select>
+          </label>
+          <label class="field">
+            <span data-i18n="color">Kolor</span>
+            <select id="brick-color" name="color" required></select>
+          </label>
+          <label class="field">
+            <span data-i18n="location">Lokalizacja</span>
+            <input id="brick-location" name="location" type="text" maxlength="50">
+          </label>
+          <label class="field">
+            <span data-i18n="year">Rok</span>
+            <input id="brick-year" name="year" type="number" min="1949" max="2100">
+          </label>
+          <label class="field field-wide">
+            <span data-i18n="notes">Notatki</span>
+            <textarea id="brick-notes" name="notes" rows="3" maxlength="300"></textarea>
+          </label>
+        </div>
+        <div class="dialog-actions">
+          <button class="button button-secondary" id="cancel-dialog" type="button" data-i18n="cancel">
+            Anuluj
+          </button>
+          <button class="button button-primary" type="submit" data-i18n="save">
+            Zapisz
+          </button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="confirm-dialog" id="confirm-dialog" aria-labelledby="confirm-title">
+      <form method="dialog">
+        <h2 id="confirm-title" data-i18n="deleteTitle">Usunąć element?</h2>
+        <p data-i18n="deleteCopy">Tej operacji nie można cofnąć.</p>
+        <div class="dialog-actions">
+          <button class="button button-secondary" value="cancel" data-i18n="cancel">Anuluj</button>
+          <button class="button button-danger" value="confirm" data-i18n="delete">Usuń</button>
+        </div>
+      </form>
+    </dialog>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <template id="brick-card-template">
+      <article class="brick-card">
+        <div class="brick-visual">
+          <span class="category-badge"></span>
+          <div class="brick-model" aria-hidden="true">
+            <span></span><span></span><span></span><span></span>
+          </div>
+          <div class="card-actions">
+            <button class="icon-button edit-button" type="button">
+              <svg class="icon"><use href="#icon-edit"></use></svg>
+              <span class="visually-hidden" data-i18n="edit">Edytuj</span>
+            </button>
+            <button class="icon-button delete-button" type="button">
+              <svg class="icon"><use href="#icon-trash"></use></svg>
+              <span class="visually-hidden" data-i18n="delete">Usuń</span>
+            </button>
+          </div>
+        </div>
+        <div class="card-content">
+          <span class="part-number"></span>
+          <h3></h3>
+          <div class="card-meta">
+            <span class="color-label"><i></i><b></b></span>
+            <span class="location-label"></span>
+          </div>
+          <div class="quantity-control">
+            <span data-i18n="quantity">Ilość</span>
+            <div>
+              <button class="quantity-button decrease-button" type="button" aria-label="Zmniejsz ilość">−</button>
+              <strong class="quantity"></strong>
+              <button class="quantity-button increase-button" type="button" aria-label="Zwiększ ilość">+</button>
+            </div>
+          </div>
+        </div>
+      </article>
+    </template>
+  </body>
+</html>

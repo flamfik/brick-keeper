@@ -1,0 +1,109 @@
+{
+  "schemaVersion": 1,
+  "items": [
+    {
+      "id": "brick-3001-red",
+      "name": "Brick 2 × 4",
+      "partNumber": "3001",
+      "category": "bricks",
+      "color": "red",
+      "quantity": 48,
+      "location": "Box A1",
+      "year": 1958,
+      "notes": "Classic basic brick.",
+      "createdAt": "2026-05-12T10:00:00.000Z",
+      "updatedAt": "2026-05-12T10:00:00.000Z"
+    },
+    {
+      "id": "brick-3003-blue",
+      "name": "Brick 2 × 2",
+      "partNumber": "3003",
+      "category": "bricks",
+      "color": "blue",
+      "quantity": 32,
+      "location": "Box A1",
+      "year": 1958,
+      "notes": "",
+      "createdAt": "2026-05-14T10:00:00.000Z",
+      "updatedAt": "2026-05-14T10:00:00.000Z"
+    },
+    {
+      "id": "plate-3020-yellow",
+      "name": "Plate 2 × 4",
+      "partNumber": "3020",
+      "category": "plates",
+      "color": "yellow",
+      "quantity": 26,
+      "location": "Tray B2",
+      "year": 1957,
+      "notes": "",
+      "createdAt": "2026-05-16T10:00:00.000Z",
+      "updatedAt": "2026-05-16T10:00:00.000Z"
+    },
+    {
+      "id": "tile-3068-green",
+      "name": "Tile 2 × 2",
+      "partNumber": "3068",
+      "category": "tiles",
+      "color": "green",
+      "quantity": 19,
+      "location": "Tray C1",
+      "year": 1970,
+      "notes": "Smooth finishing tile.",
+      "createdAt": "2026-05-20T10:00:00.000Z",
+      "updatedAt": "2026-05-20T10:00:00.000Z"
+    },
+    {
+      "id": "slope-3039-orange",
+      "name": "Slope 45° 2 × 2",
+      "partNumber": "3039",
+      "category": "slopes",
+      "color": "orange",
+      "quantity": 14,
+      "location": "Tray C3",
+      "year": 1975,
+      "notes": "",
+      "createdAt": "2026-05-21T10:00:00.000Z",
+      "updatedAt": "2026-05-21T10:00:00.000Z"
+    },
+    {
+      "id": "technic-3700-black",
+      "name": "Technic Brick 1 × 2",
+      "partNumber": "3700",
+      "category": "technic",
+      "color": "black",
+      "quantity": 21,
+      "location": "Box D1",
+      "year": 1977,
+      "notes": "Single axle hole.",
+      "createdAt": "2026-05-25T10:00:00.000Z",
+      "updatedAt": "2026-05-25T10:00:00.000Z"
+    },
+    {
+      "id": "brick-3010-white",
+      "name": "Brick 1 × 4",
+      "partNumber": "3010",
+      "category": "bricks",
+      "color": "white",
+      "quantity": 37,
+      "location": "Box A2",
+      "year": 1958,
+      "notes": "",
+      "createdAt": "2026-05-28T10:00:00.000Z",
+      "updatedAt": "2026-05-28T10:00:00.000Z"
+    },
+    {
+      "id": "plate-3023-gray",
+      "name": "Plate 1 × 2",
+      "partNumber": "3023",
+      "category": "plates",
+      "color": "gray",
+      "quantity": 55,
+      "location": "Tray B1",
+      "year": 1956,
+      "notes": "",
+      "createdAt": "2026-06-01T10:00:00.000Z",
+      "updatedAt": "2026-06-01T10:00:00.000Z"
+    }
+  ]
+}
