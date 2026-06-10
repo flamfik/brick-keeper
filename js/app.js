@@ -1,12 +1,12 @@
-import { translate } from "./i18n.js";
+import { translate } from "./i18n.js?v=0.9.2";
 import {
   loadStoredInventory,
   saveInventory,
   serializeInventory,
   validateInventory
-} from "./storage.js";
+} from "./storage.js?v=0.9.2";
 
-const DATA_URL = "./data/bricks.json";
+const DATA_URL = "./data/bricks.json?v=0.9.2";
 const MAX_IMAGE_FILE_SIZE = 10 * 1024 * 1024;
 const MAX_IMAGE_DIMENSION = 1200;
 const IMAGE_QUALITY = 0.82;
@@ -380,12 +380,24 @@ function saveBrickFromForm(event) {
 }
 
 /**
- * Generates an identifier even when randomUUID is unavailable, for example
- * when the application is opened from a non-secure local context.
+ * Generates a collision-resistant identifier without relying on randomUUID,
+ * which is unavailable in older browsers and non-secure local contexts.
  */
 function createId() {
-  if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
-  return `brick-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+  const randomBytes = new Uint32Array(2);
+  if (globalThis.crypto?.getRandomValues) {
+    globalThis.crypto.getRandomValues(randomBytes);
+  } else {
+    randomBytes[0] = Math.floor(Math.random() * 0xffffffff);
+    randomBytes[1] = Math.floor(Math.random() * 0xffffffff);
+  }
+
+  return [
+    "brick",
+    Date.now().toString(36),
+    randomBytes[0].toString(36),
+    randomBytes[1].toString(36)
+  ].join("-");
 }
 
 function setPhotoPreview(image) {
