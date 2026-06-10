@@ -473,6 +473,24 @@ h2 {
   font-weight: 700;
 }
 
+.data-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.file-status {
+  width: 100%;
+  color: var(--muted);
+  text-align: right;
+}
+
+.file-status.is-connected {
+  color: var(--green);
+  font-weight: 800;
+}
+
 .text-button {
   padding: 4px;
   color: var(--green);
@@ -968,6 +986,15 @@ dialog::backdrop {
   .section-heading {
     align-items: start;
     flex-direction: column;
+  }
+
+  .data-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .file-status {
+    text-align: left;
   }
 
   .brick-grid {

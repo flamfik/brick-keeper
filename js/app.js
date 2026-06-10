@@ -1,12 +1,21 @@
-import { translate } from "./i18n.js?v=0.9.3";
+import { translate } from "./i18n.js?v=0.9.4";
+import {
+  getFilePermission,
+  loadStoredFileHandle,
+  pickInventoryFile,
+  readInventoryFile,
+  storeFileHandle,
+  supportsFileStorage,
+  writeInventoryFile
+} from "./file-storage.js?v=0.9.4";
 import {
   loadStoredInventory,
   saveInventory,
   serializeInventory,
   validateInventory
-} from "./storage.js?v=0.9.3";
+} from "./storage.js?v=0.9.4";
 
-const DATA_URL = "./data/bricks.json?v=0.9.3";
+const DATA_URL = "./data/bricks.json?v=0.9.4";
 const CATALOG_URL = "./data/catalog";
 const MAX_IMAGE_FILE_SIZE = 10 * 1024 * 1024;
 const MAX_IMAGE_DIMENSION = 1200;
@@ -45,6 +54,9 @@ const state = {
 let pendingImage = null;
 let selectedCatalogPart = null;
 let catalogRequestId = 0;
+let inventoryFileHandle = null;
+let filePermissionState = "unavailable";
+let fileSaveQueue = Promise.resolve();
 const catalogCache = new Map();
 
 const elements = {
@@ -62,6 +74,8 @@ const elements = {
   emptyAddButton: document.querySelector("#empty-add-button"),
   importButton: document.querySelector("#import-button"),
   exportButton: document.querySelector("#export-button"),
+  connectFileButton: document.querySelector("#connect-file-button"),
+  fileStatus: document.querySelector("#file-status"),
   fileInput: document.querySelector("#file-input"),
   brickDialog: document.querySelector("#brick-dialog"),
   brickForm: document.querySelector("#brick-form"),
@@ -91,25 +105,96 @@ async function initialize() {
   elements.language.value = state.language;
   applyTranslations();
 
-  const storedItems = loadStoredInventory();
-  if (storedItems !== null) {
-    state.items = storedItems;
-  } else {
-    try {
-      const response = await fetch(DATA_URL);
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const data = await response.json();
-      if (!validateInventory(data)) throw new Error("Invalid starter data");
-      state.items = data.items;
-      saveInventory(state.items);
-    } catch (error) {
-      console.error("Starter inventory loading failed:", error);
-      showToast(t("loadError"));
+  const loadedFromFile = await restoreConnectedFile();
+  if (!loadedFromFile) {
+    const storedItems = loadStoredInventory();
+    if (storedItems !== null) {
+      state.items = storedItems;
+    } else {
+      try {
+        const response = await fetch(DATA_URL);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        if (!validateInventory(data)) throw new Error("Invalid starter data");
+        state.items = data.items;
+        saveInventory(state.items);
+      } catch (error) {
+        console.error("Starter inventory loading failed:", error);
+        showToast(t("loadError"));
+      }
     }
   }
 
+  updateFileStorageUi();
   rebuildFilterOptions();
   render();
+}
+
+async function restoreConnectedFile() {
+  if (!supportsFileStorage()) {
+    filePermissionState = "unavailable";
+    return false;
+  }
+
+  try {
+    inventoryFileHandle = await loadStoredFileHandle();
+    if (!inventoryFileHandle) {
+      filePermissionState = "disconnected";
+      return false;
+    }
+
+    filePermissionState = await getFilePermission(inventoryFileHandle);
+    if (filePermissionState !== "granted") return false;
+
+    const data = await readInventoryFile(inventoryFileHandle);
+    if (!validateInventory(data)) throw new Error("Invalid connected file schema");
+    state.items = data.items;
+    saveLocalMirror(state.items);
+    return true;
+  } catch (error) {
+    console.error("Connected inventory loading failed:", error);
+    filePermissionState = "error";
+    return false;
+  }
+}
+
+async function connectInventoryFile() {
+  if (!supportsFileStorage()) {
+    showToast(t("fileUnsupported"));
+    return;
+  }
+
+  try {
+    let handle = inventoryFileHandle;
+    if (!handle || filePermissionState === "granted" || filePermissionState === "error") {
+      handle = await pickInventoryFile();
+    }
+
+    const permission = await getFilePermission(handle, true);
+    if (permission !== "granted") {
+      filePermissionState = permission;
+      updateFileStorageUi();
+      return;
+    }
+
+    const data = await readInventoryFile(handle);
+    if (!validateInventory(data)) throw new Error("Invalid connected file schema");
+
+    inventoryFileHandle = handle;
+    filePermissionState = "granted";
+    await storeFileHandle(handle);
+    saveLocalMirror(data.items);
+    state.items = data.items;
+    clearFilters();
+    updateFileStorageUi();
+    render();
+    showToast(t("fileConnectedToast"));
+  } catch (error) {
+    if (error?.name === "AbortError") return;
+    console.error("Inventory file connection failed:", error);
+    updateFileStorageUi();
+    showToast(t(error instanceof SyntaxError ? "invalidFile" : "fileError"));
+  }
 }
 
 function bindEvents() {
@@ -156,6 +241,7 @@ function bindEvents() {
   elements.importButton.addEventListener("click", () => elements.fileInput.click());
   elements.fileInput.addEventListener("change", importInventory);
   elements.exportButton.addEventListener("click", exportInventory);
+  elements.connectFileButton.addEventListener("click", connectInventoryFile);
   elements.confirmDialog.addEventListener("close", handleDeleteConfirmation);
 
   document.addEventListener("keydown", (event) => {
@@ -191,6 +277,28 @@ function applyTranslations() {
   });
 
   elements.closeDialog.setAttribute("aria-label", t("cancel"));
+  updateFileStorageUi();
+}
+
+function updateFileStorageUi() {
+  if (!elements.fileStatus) return;
+
+  const connected = filePermissionState === "granted" && inventoryFileHandle;
+  elements.connectFileButton.disabled = filePermissionState === "unavailable";
+  elements.connectFileButton.querySelector("span").textContent = t(connected ? "changeFile" : "connectFile");
+  elements.fileStatus.classList.toggle("is-connected", Boolean(connected));
+
+  if (connected) {
+    elements.fileStatus.textContent = t("fileConnected", { name: inventoryFileHandle.name });
+  } else if (filePermissionState === "prompt" || filePermissionState === "denied") {
+    elements.fileStatus.textContent = t("filePermissionNeeded");
+  } else if (filePermissionState === "unavailable") {
+    elements.fileStatus.textContent = t("fileUnsupported");
+  } else if (filePermissionState === "error") {
+    elements.fileStatus.textContent = t("fileError");
+  } else {
+    elements.fileStatus.textContent = t("fileDisconnected");
+  }
 }
 
 /**
@@ -522,7 +630,7 @@ async function handlePhotoSelection(event) {
 }
 
 /**
- * Resizes photos before they enter localStorage or exported JSON. This keeps
+ * Resizes photos before they enter persistent storage or exported JSON. This keeps
  * cards quick to render and greatly reduces the chance of exceeding quota.
  */
 async function compressImage(file) {
@@ -572,17 +680,43 @@ function clearFilters() {
 }
 
 function commitItems(nextItems) {
-  try {
-    saveInventory(nextItems);
-  } catch (error) {
-    console.error("Inventory saving failed:", error);
+  const localCopySaved = saveLocalMirror(nextItems);
+
+  if (!localCopySaved && filePermissionState !== "granted") {
     showToast(t("storageError"));
     return false;
   }
 
   state.items = nextItems;
   render();
+  queueFileSave(nextItems);
   return true;
+}
+
+function saveLocalMirror(items) {
+  try {
+    saveInventory(items);
+    return true;
+  } catch (error) {
+    console.error("Local inventory mirror saving failed:", error);
+    return false;
+  }
+}
+
+function queueFileSave(items) {
+  if (filePermissionState !== "granted" || !inventoryFileHandle) return;
+
+  const handle = inventoryFileHandle;
+  const contents = serializeInventory(items);
+  fileSaveQueue = fileSaveQueue
+    .catch(() => undefined)
+    .then(() => writeInventoryFile(handle, contents))
+    .catch((error) => {
+      console.error("Connected inventory saving failed:", error);
+      filePermissionState = "error";
+      updateFileStorageUi();
+      showToast(t("fileError"));
+    });
 }
 
 async function importInventory(event) {

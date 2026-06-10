@@ -15,7 +15,8 @@ Spanish.
 - optional part photos, resized and compressed locally before saving;
 - part-number lookup backed by an optimized CSV-derived reference catalog;
 - import and export using a documented JSON format;
-- local persistence with `localStorage`;
+- optional direct reading and automatic saving to a connected JSON file;
+- local fallback persistence when no file is connected;
 - Polish, English and Spanish interface;
 - responsive, keyboard-friendly interface with no runtime dependencies.
 
@@ -45,6 +46,7 @@ python -m http.server 8080
 │   └── ARCHITECTURE.md   # technical architecture and extension guide
 ├── js/
 │   ├── app.js            # state, rendering and user interaction
+│   ├── file-storage.js   # connected JSON file and remembered permissions
 │   ├── i18n.js           # translations and interpolation
 │   └── storage.js        # persistence, validation, import/export
 ├── tools/
@@ -55,9 +57,18 @@ python -m http.server 8080
 
 ## Data storage
 
-`data/bricks.json` provides the initial collection. On first use it is copied to
-the browser's `localStorage`; subsequent edits stay there. Use **Export** to
-download the current collection and **Import** to restore or move it.
+`data/bricks.json` provides the initial collection. Use **Connect file** to open
+an existing Brick Keeper JSON document. Once connected, every collection change
+is written directly to that file. The file handle is remembered in IndexedDB;
+after restarting the browser, a single click may be required to renew access.
+
+When no file is connected, the app keeps a fallback copy in `localStorage`.
+This fallback is tied to the exact site address, so `localhost`, GitHub Pages
+and a directly opened `file://` page do not share the same collection.
+
+Use **Export** to create the first JSON file, then connect the downloaded file.
+Direct file access requires a Chromium-based browser such as Chrome or Edge and
+a secure origin such as HTTPS or `http://localhost`.
 
 Photos are stored as compressed WebP data URLs in the item's optional `image`
 field. This keeps exported JSON self-contained. Browser storage is limited, so
@@ -85,9 +96,9 @@ On Windows, the equivalent PowerShell command is:
 The generated catalog is read-only reference data. The user's quantities,
 locations, notes and photos remain in the versioned collection JSON.
 
-Browsers cannot directly overwrite a project JSON file without a backend or
-explicit File System Access API permission. This design keeps the app portable,
-safe and compatible with static GitHub Pages hosting.
+Browsers can overwrite only a file explicitly selected by the user. The File
+System Access API permission keeps this compatible with static GitHub Pages
+hosting without giving the site unrestricted disk access.
 
 ## Deploy to GitHub Pages
 

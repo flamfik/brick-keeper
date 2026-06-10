@@ -4,16 +4,19 @@
 
 Brick Keeper is designed for static hosting, low startup cost and simple
 community contributions. It uses browser standards only: HTML, CSS, ES modules,
-the Dialog API, `localStorage`, Blob downloads and File input.
+the Dialog API, File System Access API, IndexedDB, `localStorage`, Blob
+downloads and File input.
 
 ## Runtime flow
 
 1. `index.html` loads `js/app.js` as an ES module.
 2. The app selects a language from saved preferences or the browser locale.
-3. `storage.js` checks for a versioned inventory in `localStorage`.
-4. If no local inventory exists, `data/bricks.json` is fetched and persisted.
-5. The UI is rendered from the in-memory `state` object.
-6. Mutations are saved synchronously, then the affected interface is rendered.
+3. `file-storage.js` restores a previously selected JSON file handle.
+4. If file permission is active, the JSON file becomes the primary data source.
+5. Otherwise `storage.js` checks the fallback copy in `localStorage`.
+6. If no fallback exists, `data/bricks.json` is fetched and persisted.
+7. The UI is rendered from the in-memory `state` object.
+8. Mutations update the local fallback and are queued for ordered file writes.
 
 ## Modules
 
@@ -37,6 +40,13 @@ Defines the persistence boundary. Data is stored in a versioned envelope:
 
 The same validator is used for starter data and imported files. Future schema
 changes should add a migration before increasing `schemaVersion`.
+
+### `js/file-storage.js`
+
+Wraps the File System Access API and stores the user-approved file handle in
+IndexedDB. The app never receives access to other files or directories. File
+writes are serialized in `app.js` so rapid quantity changes cannot race and
+overwrite newer data with an older snapshot.
 
 ### `js/i18n.js`
 
@@ -87,7 +97,8 @@ dictionary.
 - imported JSON is parsed and structurally validated;
 - uploaded images are decoded and resized locally; they are never sent to a server;
 - the application has no authentication, analytics or third-party requests;
-- data is scoped to the current browser origin;
+- fallback data and remembered file handles are scoped to the browser origin;
+- direct writes are limited to a file explicitly selected by the user;
 - export requires an explicit user action.
 
 The only `innerHTML` assignment is for trusted, developer-owned translation
