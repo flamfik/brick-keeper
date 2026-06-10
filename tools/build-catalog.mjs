@@ -43,7 +43,7 @@ function getCategoryGroup(categoryId) {
 }
 
 function getShard(partNumber) {
-  return partNumber.toLowerCase().replace(/[^a-z0-9]/g, "_").padEnd(3, "_").slice(0, 3);
+  return partNumber.toLowerCase().replace(/[^a-z0-9]/g, "_").padEnd(1, "_").slice(0, 1);
 }
 
 const categoryRows = readFileSync(join(sourceDirectory, "part_categories.csv"), "utf8")
@@ -88,6 +88,7 @@ writeFileSync(join(outputDirectory, "manifest.json"), JSON.stringify({
   generatedAt: new Date().toISOString(),
   source: "BrickKeeper_DB/parts.csv",
   totalParts,
+  shardStrategy: "first-character",
   shards: [...shards.keys()].sort()
 }, null, 2));
 

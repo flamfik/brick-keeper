@@ -30,7 +30,7 @@ function Get-CategoryGroup([int]$CategoryId) {
 
 function Get-Shard([string]$PartNumber) {
   $normalized = $PartNumber.ToLowerInvariant() -replace "[^a-z0-9]", "_"
-  return ($normalized + "___").Substring(0, 3)
+  return ($normalized + "_").Substring(0, 1)
 }
 
 $shards = @{}
@@ -69,6 +69,7 @@ $manifest = [ordered]@{
   generatedAt = [DateTime]::UtcNow.ToString("o")
   source = "BrickKeeper_DB/parts.csv"
   totalParts = $totalParts
+  shardStrategy = "first-character"
   shards = @($shards.Keys | Sort-Object)
 }
 

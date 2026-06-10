@@ -2,13 +2,22 @@
 
 ## Local setup
 
-No dependencies are required. Serve the directory over HTTP:
+No dependencies are required to run the application. Serve the directory over
+HTTP:
 
 ```bash
 node tools/server.mjs
 ```
 
 Open <http://localhost:8080> and use browser developer tools for testing.
+
+Optional automated tests use development-only packages:
+
+```bash
+npm install
+npm test
+npm run test:e2e
+```
 
 ## Change guidelines
 
@@ -34,6 +43,7 @@ Open <http://localhost:8080> and use browser developer tools for testing.
 9. Check desktop and mobile widths.
 10. Add the same part and color twice; verify that the quantities merge.
 11. Install the PWA and verify that the application shell opens offline.
+12. Verify that a waiting service worker shows the update banner.
 
 ## Pull requests
 

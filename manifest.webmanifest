@@ -1,6 +1,7 @@
 {
   "name": "Brick Keeper",
   "short_name": "BrickKeeper",
+  "lang": "en",
   "description": "Offline organizer for a LEGO brick collection.",
   "start_url": "./",
   "scope": "./",

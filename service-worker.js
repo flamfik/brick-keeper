@@ -1,15 +1,18 @@
-const CACHE_NAME = "brick-keeper-v0.9.6";
+const CACHE_NAME = "brick-keeper-v1.0b";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./styles.css?v=0.9.6",
-  "./js/app.js?v=0.9.6",
-  "./js/file-storage.js?v=0.9.6",
-  "./js/i18n.js?v=0.9.6",
-  "./js/inventory.js?v=0.9.6",
-  "./js/storage.js?v=0.9.6",
-  "./data/bricks.json?v=0.9.6",
-  "./data/colors.json?v=0.9.6",
+  "./styles.css?v=1.0b",
+  "./js/app.js?v=1.0b",
+  "./js/backups.js?v=1.0b",
+  "./js/file-storage.js?v=1.0b",
+  "./js/i18n.js?v=1.0b",
+  "./js/inventory.js?v=1.0b",
+  "./js/scanner.js?v=1.0b",
+  "./js/set-catalog.js?v=1.0b",
+  "./js/storage.js?v=1.0b",
+  "./data/bricks.json?v=1.0b",
+  "./data/colors.json?v=1.0b",
   "./manifest.webmanifest",
   "./icons/app-icon.svg",
   "./icons/app-icon-192.png",
@@ -18,7 +21,10 @@ const APP_SHELL = [
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)));
-  self.skipWaiting();
+});
+
+self.addEventListener("message", (event) => {
+  if (event.data?.type === "SKIP_WAITING") self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {

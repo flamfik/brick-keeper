@@ -28,6 +28,19 @@ export const translations = {
     fileError: "Nie udało się odczytać lub zapisać połączonego pliku.",
     import: "Importuj",
     export: "Eksportuj",
+    sets: "Zestawy",
+    setsEyebrow: "Budowanie zestawów",
+    setSearchPlaceholder: "Numer lub nazwa zestawu",
+    setProgress: "Masz {owned} z {required} części",
+    missingParts: "Brakujące części: {count}",
+    scan: "Skanuj",
+    scannerHint: "Umieść kod w centrum obrazu.",
+    scannerUnsupported: "Skaner nie jest obsługiwany. Wpisz numer ręcznie.",
+    backups: "Kopie",
+    backupsHint: "Ostatnie 20 wersji kolekcji.",
+    undo: "Cofnij",
+    undoEmpty: "Brak wcześniejszej wersji.",
+    restored: "Przywrócono wcześniejszą wersję.",
     search: "Szukaj",
     searchPlaceholder: "Szukaj po nazwie lub numerze...",
     category: "Kategoria",
@@ -80,6 +93,8 @@ export const translations = {
     exported: "Dane zostały wyeksportowane.",
     invalidFile: "Nieprawidłowy plik JSON.",
     loadError: "Nie udało się wczytać danych startowych.",
+    updateAvailable: "Nowa wersja Brick Keeper jest gotowa.",
+    updateNow: "Aktualizuj",
     categories: {
       bricks: "Klocki",
       plates: "Płytki",
@@ -123,6 +138,19 @@ export const translations = {
     fileError: "The connected file could not be read or saved.",
     import: "Import",
     export: "Export",
+    sets: "Sets",
+    setsEyebrow: "Set building",
+    setSearchPlaceholder: "Set number or name",
+    setProgress: "You own {owned} of {required} parts",
+    missingParts: "Missing parts: {count}",
+    scan: "Scan",
+    scannerHint: "Place the code in the center of the image.",
+    scannerUnsupported: "Scanning is not supported. Enter the number manually.",
+    backups: "Backups",
+    backupsHint: "The latest 20 collection versions.",
+    undo: "Undo",
+    undoEmpty: "No previous version is available.",
+    restored: "The previous version was restored.",
     search: "Search",
     searchPlaceholder: "Search by name or part number...",
     category: "Category",
@@ -175,6 +203,8 @@ export const translations = {
     exported: "Data exported.",
     invalidFile: "Invalid JSON file.",
     loadError: "Could not load starter data.",
+    updateAvailable: "A new Brick Keeper version is ready.",
+    updateNow: "Update now",
     categories: {
       bricks: "Bricks",
       plates: "Plates",
@@ -218,6 +248,19 @@ export const translations = {
     fileError: "No se pudo leer o guardar el archivo conectado.",
     import: "Importar",
     export: "Exportar",
+    sets: "Sets",
+    setsEyebrow: "Construcción de sets",
+    setSearchPlaceholder: "Número o nombre del set",
+    setProgress: "Tienes {owned} de {required} piezas",
+    missingParts: "Piezas que faltan: {count}",
+    scan: "Escanear",
+    scannerHint: "Coloca el código en el centro de la imagen.",
+    scannerUnsupported: "El escáner no está disponible. Introduce el número manualmente.",
+    backups: "Copias",
+    backupsHint: "Las últimas 20 versiones de la colección.",
+    undo: "Deshacer",
+    undoEmpty: "No hay una versión anterior.",
+    restored: "Se restauró la versión anterior.",
     search: "Buscar",
     searchPlaceholder: "Buscar por nombre o número...",
     category: "Categoría",
@@ -270,6 +313,8 @@ export const translations = {
     exported: "Datos exportados.",
     invalidFile: "Archivo JSON no válido.",
     loadError: "No se pudieron cargar los datos iniciales.",
+    updateAvailable: "Hay una nueva versión de Brick Keeper disponible.",
+    updateNow: "Actualizar",
     categories: {
       bricks: "Ladrillos",
       plates: "Placas",
@@ -295,11 +340,11 @@ export const translations = {
 
 /**
  * Resolves a dotted translation path and optionally interpolates placeholders.
- * Missing keys fall back to Polish, which is also the project's source locale.
+ * Missing keys fall back to English, which is the project's source locale.
  */
 export function translate(language, path, variables = {}) {
   const resolve = (source) => path.split(".").reduce((value, key) => value?.[key], source);
-  const text = resolve(translations[language]) ?? resolve(translations.pl) ?? path;
+  const text = resolve(translations[language]) ?? resolve(translations.en) ?? path;
 
   return String(text).replace(/\{(\w+)\}/g, (_, key) => variables[key] ?? `{${key}}`);
 }

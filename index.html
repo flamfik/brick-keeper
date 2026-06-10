@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="pl">
+<html lang="en">
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -9,19 +9,19 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta
       name="description"
-      content="Brick Keeper - szybki, lokalny organizer kolekcji klocków LEGO."
+      content="Brick Keeper - a fast, local organizer for a LEGO brick collection."
     >
     <title>Brick Keeper</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="icons/app-icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="icons/app-icon-192.png">
-    <link rel="preload" href="styles.css?v=0.9.6" as="style">
-    <link rel="stylesheet" href="styles.css?v=0.9.6">
-    <script type="module" src="js/app.js?v=0.9.6"></script>
+    <link rel="preload" href="styles.css?v=1.0b" as="style">
+    <link rel="stylesheet" href="styles.css?v=1.0b">
+    <script type="module" src="js/app.js?v=1.0b"></script>
   </head>
   <body>
     <a class="skip-link" href="#inventory" data-i18n="skipToInventory">
-      Przejdź do kolekcji
+      Skip to inventory
     </a>
 
     <svg class="icon-sprite" aria-hidden="true">
@@ -72,17 +72,17 @@
 
       <div class="header-actions">
         <label class="language-picker">
-          <span class="visually-hidden" data-i18n="language">Język</span>
-          <select id="language-select" aria-label="Język">
-            <option value="pl">PL</option>
+          <span class="visually-hidden" data-i18n="language">Language</span>
+          <select id="language-select" aria-label="Language">
             <option value="en">EN</option>
+            <option value="pl">PL</option>
             <option value="es">ES</option>
           </select>
           <svg class="icon" aria-hidden="true"><use href="#icon-chevron"></use></svg>
         </label>
         <button class="button button-primary" id="add-brick-button" type="button">
           <svg class="icon" aria-hidden="true"><use href="#icon-plus"></use></svg>
-          <span data-i18n="addBrick">Dodaj klocek</span>
+          <span data-i18n="addBrick">Add brick</span>
         </button>
       </div>
     </header>
@@ -90,10 +90,10 @@
     <main>
       <section class="hero" aria-labelledby="page-title">
         <div>
-          <p class="eyebrow" data-i18n="eyebrow">Twoja kolekcja. Pod kontrolą.</p>
-          <h1 id="page-title" data-i18n="pageTitle">Klocki, które masz.<br>Kreatywność bez granic.</h1>
+          <p class="eyebrow" data-i18n="eyebrow">Your collection. Under control.</p>
+          <h1 id="page-title" data-i18n="pageTitle">Bricks you own.<br>Creativity without limits.</h1>
           <p class="hero-copy" data-i18n="heroCopy">
-            Porządkuj, wyszukuj i rozwijaj swoją kolekcję bez chaosu.
+            Organize, search and grow your collection without the clutter.
           </p>
         </div>
         <div class="hero-bricks" aria-hidden="true">
@@ -103,26 +103,26 @@
         </div>
       </section>
 
-      <section class="stats" aria-label="Podsumowanie kolekcji">
+      <section class="stats" aria-label="Collection summary">
         <article class="stat-card stat-card-accent">
           <span class="stat-icon"><svg class="icon"><use href="#icon-grid"></use></svg></span>
           <div>
             <strong id="stat-parts">0</strong>
-            <span data-i18n="uniqueParts">unikalnych części</span>
+            <span data-i18n="uniqueParts">unique parts</span>
           </div>
         </article>
         <article class="stat-card">
           <span class="stat-icon"><svg class="icon"><use href="#icon-box"></use></svg></span>
           <div>
             <strong id="stat-items">0</strong>
-            <span data-i18n="totalItems">klocków łącznie</span>
+            <span data-i18n="totalItems">bricks in total</span>
           </div>
         </article>
         <article class="stat-card">
           <span class="color-dots" id="color-dots" aria-hidden="true"></span>
           <div>
             <strong id="stat-colors">0</strong>
-            <span data-i18n="colors">kolorów</span>
+            <span data-i18n="colors">colors</span>
           </div>
         </article>
       </section>
@@ -130,21 +130,30 @@
       <section class="inventory-section" id="inventory" aria-labelledby="inventory-title">
         <div class="section-heading">
           <div>
-            <p class="eyebrow" data-i18n="inventoryEyebrow">Inwentarz</p>
-            <h2 id="inventory-title" data-i18n="yourBricks">Twoje klocki</h2>
+            <p class="eyebrow" data-i18n="inventoryEyebrow">Inventory</p>
+            <h2 id="inventory-title" data-i18n="yourBricks">Your bricks</h2>
           </div>
           <div class="data-actions">
             <button class="button button-secondary" id="connect-file-button" type="button">
               <svg class="icon"><use href="#icon-box"></use></svg>
-              <span data-i18n="connectFile">Połącz plik</span>
+              <span data-i18n="connectFile">Connect file</span>
+            </button>
+            <button class="button button-secondary" id="sets-button" type="button">
+              <span data-i18n="sets">Sets</span>
+            </button>
+            <button class="button button-secondary" id="backups-button" type="button">
+              <span data-i18n="backups">Backups</span>
+            </button>
+            <button class="button button-secondary" id="undo-button" type="button">
+              <span data-i18n="undo">Undo</span>
             </button>
             <button class="button button-secondary" id="import-button" type="button">
               <svg class="icon"><use href="#icon-upload"></use></svg>
-              <span data-i18n="import">Importuj</span>
+              <span data-i18n="import">Import</span>
             </button>
             <button class="button button-secondary" id="export-button" type="button">
               <svg class="icon"><use href="#icon-download"></use></svg>
-              <span data-i18n="export">Eksportuj</span>
+              <span data-i18n="export">Export</span>
             </button>
             <input id="file-input" type="file" accept="application/json,.json" hidden>
             <small class="file-status" id="file-status" aria-live="polite"></small>
@@ -154,36 +163,36 @@
         <div class="toolbar">
           <label class="search-field">
             <svg class="icon"><use href="#icon-search"></use></svg>
-            <span class="visually-hidden" data-i18n="search">Szukaj</span>
+            <span class="visually-hidden" data-i18n="search">Search</span>
             <input
               id="search-input"
               type="search"
               autocomplete="off"
               data-i18n-placeholder="searchPlaceholder"
-              placeholder="Szukaj po nazwie lub numerze..."
+              placeholder="Search by name or part number..."
             >
             <kbd>⌘ K</kbd>
           </label>
           <label class="select-field">
-            <span class="visually-hidden" data-i18n="category">Kategoria</span>
+            <span class="visually-hidden" data-i18n="category">Category</span>
             <select id="category-filter">
-              <option value="" data-i18n="allCategories">Wszystkie kategorie</option>
+              <option value="" data-i18n="allCategories">All categories</option>
             </select>
             <svg class="icon"><use href="#icon-chevron"></use></svg>
           </label>
           <label class="select-field">
-            <span class="visually-hidden" data-i18n="color">Kolor</span>
+            <span class="visually-hidden" data-i18n="color">Color</span>
             <select id="color-filter">
-              <option value="" data-i18n="allColors">Wszystkie kolory</option>
+              <option value="" data-i18n="allColors">All colors</option>
             </select>
             <svg class="icon"><use href="#icon-chevron"></use></svg>
           </label>
           <label class="select-field">
-            <span class="visually-hidden" data-i18n="sort">Sortowanie</span>
+            <span class="visually-hidden" data-i18n="sort">Sort</span>
             <select id="sort-select">
-              <option value="name" data-i18n="sortName">Nazwa A-Z</option>
-              <option value="quantity-desc" data-i18n="sortQuantity">Największa ilość</option>
-              <option value="recent" data-i18n="sortRecent">Ostatnio dodane</option>
+              <option value="name" data-i18n="sortName">Name A-Z</option>
+              <option value="quantity-desc" data-i18n="sortQuantity">Highest quantity</option>
+              <option value="recent" data-i18n="sortRecent">Recently added</option>
             </select>
             <svg class="icon"><use href="#icon-chevron"></use></svg>
           </label>
@@ -192,7 +201,7 @@
         <div class="results-meta" aria-live="polite">
           <span id="results-count"></span>
           <button class="text-button" id="clear-filters" type="button" data-i18n="clearFilters">
-            Wyczyść filtry
+            Clear filters
           </button>
         </div>
 
@@ -200,11 +209,11 @@
 
         <div class="empty-state" id="empty-state" hidden>
           <span class="empty-brick" aria-hidden="true"></span>
-          <h3 data-i18n="emptyTitle">Nie znaleziono klocków</h3>
-          <p data-i18n="emptyCopy">Zmień filtry albo dodaj nowy element do kolekcji.</p>
+          <h3 data-i18n="emptyTitle">No bricks found</h3>
+          <p data-i18n="emptyCopy">Change the filters or add a new item to your collection.</p>
           <button class="button button-primary" id="empty-add-button" type="button">
             <svg class="icon"><use href="#icon-plus"></use></svg>
-            <span data-i18n="addBrick">Dodaj klocek</span>
+            <span data-i18n="addBrick">Add brick</span>
           </button>
         </div>
       </section>
@@ -217,17 +226,18 @@
         </span>
         <span>BRICK<span>KEEPER</span></span>
       </a>
-      <p data-i18n="footerText">Zbudowane dla kolekcjonerów. Dane zostają w Twojej przeglądarce.</p>
+      <p data-i18n="footerText">Built for collectors. Your data stays in your browser.</p>
+      <small class="app-version">v1.0b</small>
     </footer>
 
     <dialog id="brick-dialog" aria-labelledby="dialog-title">
       <form id="brick-form">
         <div class="dialog-heading">
           <div>
-            <p class="eyebrow" data-i18n="brickDetails">Szczegóły elementu</p>
-            <h2 id="dialog-title" data-i18n="newBrick">Nowy klocek</h2>
+            <p class="eyebrow" data-i18n="brickDetails">Item details</p>
+            <h2 id="dialog-title" data-i18n="newBrick">New brick</h2>
           </div>
-          <button class="icon-button" id="close-dialog" type="button" aria-label="Zamknij">
+          <button class="icon-button" id="close-dialog" type="button" aria-label="Close">
             <svg class="icon"><use href="#icon-close"></use></svg>
           </button>
         </div>
@@ -235,7 +245,7 @@
         <input id="brick-id" name="id" type="hidden">
         <div class="form-grid">
           <div class="field field-wide">
-            <span data-i18n="photo">Zdjęcie</span>
+            <span data-i18n="photo">Photo</span>
             <div class="photo-editor">
               <div class="photo-preview" id="photo-preview">
                 <div class="brick-model photo-placeholder" aria-hidden="true">
@@ -245,7 +255,7 @@
               </div>
               <div class="photo-controls">
                 <label class="button button-secondary photo-upload-button" for="brick-photo">
-                  <span data-i18n="choosePhoto">Wybierz zdjęcie</span>
+                  <span data-i18n="choosePhoto">Choose photo</span>
                 </label>
                 <input
                   id="brick-photo"
@@ -255,18 +265,19 @@
                   hidden
                 >
                 <button class="text-button" id="remove-photo" type="button" data-i18n="removePhoto" hidden>
-                  Usuń zdjęcie
+                  Remove photo
                 </button>
-                <small data-i18n="photoHint">JPG, PNG lub WebP, maksymalnie 10 MB.</small>
+                <small data-i18n="photoHint">JPG, PNG or WebP, up to 10 MB.</small>
               </div>
             </div>
           </div>
           <label class="field field-wide">
-            <span data-i18n="name">Nazwa</span>
+            <span data-i18n="name">Name</span>
             <input id="brick-name" name="name" type="text" maxlength="80" required>
           </label>
           <label class="field">
-            <span data-i18n="partNumber">Numer części</span>
+            <span data-i18n="partNumber">Part number</span>
+            <div class="input-action">
             <input
               id="brick-part-number"
               name="partNumber"
@@ -276,55 +287,109 @@
               autocomplete="off"
               required
             >
+            <button class="button button-secondary scan-part-button" type="button" data-i18n="scan">Scan</button>
+            </div>
             <datalist id="part-catalog-suggestions"></datalist>
             <small class="catalog-status" id="catalog-status" aria-live="polite"></small>
           </label>
           <label class="field">
-            <span data-i18n="quantity">Ilość</span>
+            <span data-i18n="quantity">Quantity</span>
             <input id="brick-quantity" name="quantity" type="number" min="0" max="99999" value="1" required>
           </label>
           <label class="field">
-            <span data-i18n="category">Kategoria</span>
+            <span data-i18n="category">Category</span>
             <select id="brick-category" name="category" required></select>
           </label>
           <label class="field">
-            <span data-i18n="color">Kolor</span>
+            <span data-i18n="color">Color</span>
             <select id="brick-color" name="color" required></select>
           </label>
           <label class="field">
-            <span data-i18n="location">Lokalizacja</span>
+            <span data-i18n="location">Location</span>
             <input id="brick-location" name="location" type="text" maxlength="50">
           </label>
           <label class="field">
-            <span data-i18n="year">Rok</span>
+            <span data-i18n="year">Year</span>
             <input id="brick-year" name="year" type="number" min="1949" max="2100">
           </label>
           <label class="field field-wide">
-            <span data-i18n="notes">Notatki</span>
+            <span data-i18n="notes">Notes</span>
             <textarea id="brick-notes" name="notes" rows="3" maxlength="300"></textarea>
           </label>
         </div>
         <div class="dialog-actions">
           <button class="button button-secondary" id="cancel-dialog" type="button" data-i18n="cancel">
-            Anuluj
+            Cancel
           </button>
           <button class="button button-primary" id="save-brick" type="submit" data-i18n="save">
-            Zapisz
+            Save
           </button>
         </div>
       </form>
     </dialog>
 
+    <dialog id="sets-dialog" aria-labelledby="sets-title">
+      <div class="dialog-panel">
+        <div class="dialog-heading">
+          <div><p class="eyebrow" data-i18n="setsEyebrow">Set building</p>
+            <h2 id="sets-title" data-i18n="sets">Sets</h2></div>
+          <button class="icon-button close-sets-button" type="button" aria-label="Close">
+            <svg class="icon"><use href="#icon-close"></use></svg>
+          </button>
+        </div>
+        <div class="input-action set-search-row">
+          <input id="set-search" type="search" data-i18n-placeholder="setSearchPlaceholder"
+            placeholder="Set number or name">
+          <button class="button button-secondary scan-set-button" type="button" data-i18n="scan">Scan</button>
+        </div>
+        <div id="set-search-results" class="set-search-results"></div>
+        <div id="set-details" class="set-details" hidden></div>
+      </div>
+    </dialog>
+
+    <dialog id="backups-dialog" aria-labelledby="backups-title">
+      <div class="dialog-panel">
+        <div class="dialog-heading">
+          <h2 id="backups-title" data-i18n="backups">Backups</h2>
+          <button class="icon-button close-backups-button" type="button" aria-label="Close">
+            <svg class="icon"><use href="#icon-close"></use></svg>
+          </button>
+        </div>
+        <p data-i18n="backupsHint">The latest 20 collection versions.</p>
+        <div id="backups-list" class="backups-list"></div>
+      </div>
+    </dialog>
+
+    <dialog class="scanner-dialog" id="scanner-dialog" aria-labelledby="scanner-title">
+      <div class="dialog-panel">
+        <div class="dialog-heading">
+          <h2 id="scanner-title" data-i18n="scan">Scan</h2>
+          <button class="icon-button close-scanner-button" type="button" aria-label="Close">
+            <svg class="icon"><use href="#icon-close"></use></svg>
+          </button>
+        </div>
+        <video id="scanner-video" playsinline muted></video>
+        <p data-i18n="scannerHint">Place the code in the center of the image.</p>
+      </div>
+    </dialog>
+
     <dialog class="confirm-dialog" id="confirm-dialog" aria-labelledby="confirm-title">
       <form method="dialog">
-        <h2 id="confirm-title" data-i18n="deleteTitle">Usunąć element?</h2>
-        <p data-i18n="deleteCopy">Tej operacji nie można cofnąć.</p>
+        <h2 id="confirm-title" data-i18n="deleteTitle">Delete this item?</h2>
+        <p data-i18n="deleteCopy">This action cannot be undone.</p>
         <div class="dialog-actions">
-          <button class="button button-secondary" value="cancel" data-i18n="cancel">Anuluj</button>
-          <button class="button button-danger" value="confirm" data-i18n="delete">Usuń</button>
+          <button class="button button-secondary" value="cancel" data-i18n="cancel">Cancel</button>
+          <button class="button button-danger" value="confirm" data-i18n="delete">Delete</button>
         </div>
       </form>
     </dialog>
+
+    <aside class="update-banner" id="update-banner" role="status" hidden>
+      <span data-i18n="updateAvailable">A new Brick Keeper version is ready.</span>
+      <button class="button button-primary" id="update-button" type="button" data-i18n="updateNow">
+        Update now
+      </button>
+    </aside>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
@@ -339,11 +404,11 @@
           <div class="card-actions">
             <button class="icon-button edit-button" type="button">
               <svg class="icon"><use href="#icon-edit"></use></svg>
-              <span class="visually-hidden" data-i18n="edit">Edytuj</span>
+              <span class="visually-hidden" data-i18n="edit">Edit</span>
             </button>
             <button class="icon-button delete-button" type="button">
               <svg class="icon"><use href="#icon-trash"></use></svg>
-              <span class="visually-hidden" data-i18n="delete">Usuń</span>
+              <span class="visually-hidden" data-i18n="delete">Delete</span>
             </button>
           </div>
         </div>
@@ -355,11 +420,11 @@
             <span class="location-label"></span>
           </div>
           <div class="quantity-control">
-            <span data-i18n="quantity">Ilość</span>
+            <span data-i18n="quantity">Quantity</span>
             <div>
-              <button class="quantity-button decrease-button" type="button" aria-label="Zmniejsz ilość">−</button>
+              <button class="quantity-button decrease-button" type="button" aria-label="Decrease quantity">−</button>
               <strong class="quantity"></strong>
-              <button class="quantity-button increase-button" type="button" aria-label="Zwiększ ilość">+</button>
+              <button class="quantity-button increase-button" type="button" aria-label="Increase quantity">+</button>
             </div>
           </div>
         </div>

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { upsertInventoryRecord } from "../js/inventory.js";
+import { calculateMissingParts } from "../js/set-catalog.js";
 
 const existing = {
   id: "existing",
@@ -38,5 +39,18 @@ const distinctColor = upsertInventoryRecord([existing], {
 });
 assert.equal(distinctColor.merged, false);
 assert.equal(distinctColor.items.length, 2);
+
+const missing = calculateMissingParts([
+  ["3001", "4", 5],
+  ["3020", "1", 2]
+], [{
+  partNumber: "3001",
+  color: "4",
+  quantity: 3
+}]);
+assert.deepEqual(missing, [
+  { partNumber: "3001", color: "4", required: 5, owned: 3, missing: 2 },
+  { partNumber: "3020", color: "1", required: 2, owned: 0, missing: 2 }
+]);
 
 console.log("Inventory duplicate tests passed.");

@@ -1,9 +1,9 @@
-import { translate } from "./i18n.js?v=0.9.6";
+import { translate } from "./i18n.js?v=1.0b";
 import {
   canonicalColorId,
   LEGACY_COLOR_IDS,
   upsertInventoryRecord
-} from "./inventory.js?v=0.9.6";
+} from "./inventory.js?v=1.0b";
 import {
   getFilePermission,
   loadStoredFileHandle,
@@ -12,22 +12,33 @@ import {
   storeFileHandle,
   supportsFileStorage,
   writeInventoryFile
-} from "./file-storage.js?v=0.9.6";
+} from "./file-storage.js?v=1.0b";
 import {
+  CURRENT_SCHEMA_VERSION,
   loadStoredInventory,
+  migrateInventory,
+  requestPersistentStorage,
   saveInventory,
-  serializeInventory,
-  validateInventory
-} from "./storage.js?v=0.9.6";
+  serializeInventory
+} from "./storage.js?v=1.0b";
+import { listSnapshots, saveSnapshot, takeLatestSnapshot } from "./backups.js?v=1.0b";
+import {
+  calculateMissingParts,
+  findCatalogPhoto,
+  loadSetParts,
+  searchSets
+} from "./set-catalog.js?v=1.0b";
+import { scannerSupported, startScanner, stopScanner } from "./scanner.js?v=1.0b";
 
-const DATA_URL = "./data/bricks.json?v=0.9.6";
-const COLORS_URL = "./data/colors.json?v=0.9.6";
+const DATA_URL = "./data/bricks.json?v=1.0b";
+const COLORS_URL = "./data/colors.json?v=1.0b";
 const CATALOG_URL = "./data/catalog";
 const MAX_IMAGE_FILE_SIZE = 10 * 1024 * 1024;
 const MAX_IMAGE_DIMENSION = 1200;
 const IMAGE_QUALITY = 0.82;
+const RENDER_BATCH_SIZE = 80;
 const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
-const SUPPORTED_LANGUAGES = ["pl", "en", "es"];
+const SUPPORTED_LANGUAGES = ["en", "pl", "es"];
 const CATEGORY_KEYS = ["bricks", "plates", "tiles", "slopes", "technic", "minifigures", "special"];
 const COLOR_TRANSLATION_KEYS = Object.fromEntries(
   Object.entries(LEGACY_COLOR_IDS).map(([key, id]) => [id, key])
@@ -61,6 +72,7 @@ const state = {
 };
 
 let pendingImage = null;
+let pendingCatalogImage = null;
 let selectedCatalogPart = null;
 let catalogRequestId = 0;
 let inventoryFileHandle = null;
@@ -69,6 +81,10 @@ let fileSaveQueue = Promise.resolve();
 let colorRecords = FALLBACK_COLORS;
 let colorById = new Map(colorRecords.map((record) => [record[0], record]));
 const catalogCache = new Map();
+let renderedItems = [];
+let renderedItemCount = 0;
+let renderObserver;
+let scannerTarget;
 
 const elements = {
   grid: document.querySelector("#brick-grid"),
@@ -86,6 +102,9 @@ const elements = {
   importButton: document.querySelector("#import-button"),
   exportButton: document.querySelector("#export-button"),
   connectFileButton: document.querySelector("#connect-file-button"),
+  setsButton: document.querySelector("#sets-button"),
+  backupsButton: document.querySelector("#backups-button"),
+  undoButton: document.querySelector("#undo-button"),
   fileStatus: document.querySelector("#file-status"),
   fileInput: document.querySelector("#file-input"),
   brickDialog: document.querySelector("#brick-dialog"),
@@ -103,13 +122,30 @@ const elements = {
   catalogStatus: document.querySelector("#catalog-status"),
   confirmDialog: document.querySelector("#confirm-dialog"),
   toast: document.querySelector("#toast"),
+  updateBanner: document.querySelector("#update-banner"),
+  updateButton: document.querySelector("#update-button"),
   statParts: document.querySelector("#stat-parts"),
   statItems: document.querySelector("#stat-items"),
   statColors: document.querySelector("#stat-colors"),
   colorDots: document.querySelector("#color-dots")
 };
 
+Object.assign(elements, {
+  brickColor: document.querySelector("#brick-color"),
+  scanPartButton: document.querySelector(".scan-part-button"),
+  setsDialog: document.querySelector("#sets-dialog"),
+  setSearch: document.querySelector("#set-search"),
+  setSearchResults: document.querySelector("#set-search-results"),
+  setDetails: document.querySelector("#set-details"),
+  backupsDialog: document.querySelector("#backups-dialog"),
+  backupsList: document.querySelector("#backups-list"),
+  scannerDialog: document.querySelector("#scanner-dialog"),
+  scannerVideo: document.querySelector("#scanner-video")
+});
+
 let toastTimer;
+let serviceWorkerRegistration;
+let reloadingForUpdate = false;
 
 async function initialize() {
   bindEvents();
@@ -126,8 +162,7 @@ async function initialize() {
       try {
         const response = await fetch(DATA_URL);
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const data = await response.json();
-        if (!validateInventory(data)) throw new Error("Invalid starter data");
+        const data = migrateInventory(await response.json());
         state.items = data.items;
         saveInventory(state.items);
       } catch (error) {
@@ -141,6 +176,7 @@ async function initialize() {
   rebuildFilterOptions();
   render();
   registerServiceWorker();
+  requestPersistentStorage().catch(() => false);
 }
 
 async function loadColorCatalog() {
@@ -174,10 +210,13 @@ async function restoreConnectedFile() {
     filePermissionState = await getFilePermission(inventoryFileHandle);
     if (filePermissionState !== "granted") return false;
 
-    const data = await readInventoryFile(inventoryFileHandle);
-    if (!validateInventory(data)) throw new Error("Invalid connected file schema");
+    const source = await readInventoryFile(inventoryFileHandle);
+    const data = migrateInventory(source);
     state.items = data.items;
     saveLocalMirror(state.items);
+    if (source.schemaVersion !== CURRENT_SCHEMA_VERSION) {
+      await writeInventoryFile(inventoryFileHandle, serializeInventory(state.items));
+    }
     return true;
   } catch (error) {
     console.error("Connected inventory loading failed:", error);
@@ -205,13 +244,16 @@ async function connectInventoryFile() {
       return;
     }
 
-    const data = await readInventoryFile(handle);
-    if (!validateInventory(data)) throw new Error("Invalid connected file schema");
+    const source = await readInventoryFile(handle);
+    const data = migrateInventory(source);
 
     inventoryFileHandle = handle;
     filePermissionState = "granted";
     await storeFileHandle(handle);
     saveLocalMirror(data.items);
+    if (source.schemaVersion !== CURRENT_SCHEMA_VERSION) {
+      await writeInventoryFile(handle, serializeInventory(data.items));
+    }
     state.items = data.items;
     clearFilters();
     updateFileStorageUi();
@@ -266,12 +308,26 @@ function bindEvents() {
   elements.photoInput.addEventListener("change", handlePhotoSelection);
   elements.removePhoto.addEventListener("click", () => setPhotoPreview(null));
   elements.partNumber.addEventListener("input", handlePartCatalogSearch);
+  elements.brickColor.addEventListener("change", refreshCatalogPhoto);
   elements.grid.addEventListener("click", handleGridAction);
   elements.importButton.addEventListener("click", () => elements.fileInput.click());
   elements.fileInput.addEventListener("change", importInventory);
   elements.exportButton.addEventListener("click", exportInventory);
   elements.connectFileButton.addEventListener("click", connectInventoryFile);
+  elements.setsButton.addEventListener("click", openSetsDialog);
+  elements.backupsButton.addEventListener("click", openBackupsDialog);
+  elements.undoButton.addEventListener("click", undoLastChange);
+  elements.scanPartButton.addEventListener("click", () => openScanner(elements.partNumber));
+  document.querySelector(".scan-set-button").addEventListener("click", () => openScanner(elements.setSearch));
+  document.querySelector(".close-sets-button").addEventListener("click", () => elements.setsDialog.close());
+  document.querySelector(".close-backups-button").addEventListener("click", () => elements.backupsDialog.close());
+  document.querySelector(".close-scanner-button").addEventListener("click", closeScanner);
+  elements.scannerDialog.addEventListener("close", closeScanner);
+  elements.setSearch.addEventListener("input", handleSetSearch);
+  elements.setSearchResults.addEventListener("click", handleSetSelection);
+  elements.backupsList.addEventListener("click", restoreSelectedBackup);
   elements.confirmDialog.addEventListener("close", handleDeleteConfirmation);
+  elements.updateButton.addEventListener("click", activateServiceWorkerUpdate);
 
   document.addEventListener("keydown", (event) => {
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
@@ -285,8 +341,7 @@ function getInitialLanguage() {
   const stored = localStorage.getItem("brick-keeper.language");
   if (SUPPORTED_LANGUAGES.includes(stored)) return stored;
 
-  const browserLanguage = navigator.language.slice(0, 2);
-  return SUPPORTED_LANGUAGES.includes(browserLanguage) ? browserLanguage : "pl";
+  return "en";
 }
 
 function t(path, variables) {
@@ -401,20 +456,45 @@ function getVisibleItems() {
 }
 
 function renderInventory() {
-  const visibleItems = getVisibleItems();
-  const fragment = document.createDocumentFragment();
-
-  visibleItems.forEach((item) => fragment.append(createBrickCard(item)));
-  elements.grid.replaceChildren(fragment);
-  elements.grid.hidden = visibleItems.length === 0;
-  elements.emptyState.hidden = visibleItems.length > 0;
+  renderedItems = getVisibleItems();
+  renderedItemCount = 0;
+  renderObserver?.disconnect();
+  elements.grid.replaceChildren();
+  appendInventoryBatch();
+  elements.grid.hidden = renderedItems.length === 0;
+  elements.emptyState.hidden = renderedItems.length > 0;
   elements.resultsCount.textContent = t("results", {
-    visible: formatNumber(visibleItems.length),
+    visible: formatNumber(renderedItems.length),
     total: formatNumber(state.items.length)
   });
   elements.clearFilters.hidden = !Object.values(state.filters).some((value) => (
     value && value !== "name"
   ));
+}
+
+/**
+ * Large result sets are rendered in bounded batches. IntersectionObserver adds
+ * the next window only when the user approaches the end of the current one,
+ * keeping startup DOM, layout and paint costs independent of collection size.
+ */
+function appendInventoryBatch() {
+  const nextItems = renderedItems.slice(renderedItemCount, renderedItemCount + RENDER_BATCH_SIZE);
+  const fragment = document.createDocumentFragment();
+  nextItems.forEach((item) => fragment.append(createBrickCard(item)));
+  renderedItemCount += nextItems.length;
+
+  const sentinel = document.createElement("div");
+  sentinel.className = "virtual-sentinel";
+  fragment.append(sentinel);
+  elements.grid.querySelector(".virtual-sentinel")?.remove();
+  elements.grid.append(fragment);
+
+  if (renderedItemCount >= renderedItems.length) return;
+  renderObserver?.disconnect();
+  renderObserver = new IntersectionObserver(([entry]) => {
+    if (entry.isIntersecting) appendInventoryBatch();
+  }, { rootMargin: "500px" });
+  renderObserver.observe(sentinel);
 }
 
 function createBrickCard(item) {
@@ -426,8 +506,9 @@ function createBrickCard(item) {
   card.dataset.id = item.id;
   card.querySelector(".category-badge").textContent = t(`categories.${item.category}`);
   model.style.setProperty("--brick-color", color);
-  if (item.image) {
-    photo.src = item.image;
+  const image = item.image || item.catalogImage;
+  if (image) {
+    photo.src = image;
     photo.alt = item.name;
     photo.hidden = false;
     model.hidden = true;
@@ -474,7 +555,7 @@ function updateQuantity(item, delta) {
 
 function openEditor(item = null) {
   elements.brickForm.reset();
-  setPhotoPreview(item?.image ?? null);
+  setPhotoPreview(item?.image ?? item?.catalogImage ?? null, Boolean(item?.catalogImage && !item?.image));
   selectedCatalogPart = item?.catalog ?? null;
   setCatalogStatus(item?.catalog
     ? t("catalogMatch", {
@@ -522,6 +603,7 @@ function saveBrickFromForm(event) {
     year: data.get("year") ? Number.parseInt(data.get("year"), 10) : null,
     notes: String(data.get("notes")).trim(),
     image: pendingImage,
+    catalogImage: pendingCatalogImage,
     catalog: selectedCatalogPart,
     createdAt: existing?.createdAt ?? timestamp,
     updatedAt: timestamp
@@ -591,7 +673,7 @@ async function handlePartCatalogSearch(event) {
 }
 
 async function loadCatalogShard(query) {
-  const shard = query.replace(/[^a-z0-9]/g, "_").padEnd(3, "_").slice(0, 3);
+  const shard = query.replace(/[^a-z0-9]/g, "_").padEnd(1, "_").slice(0, 1);
   if (!catalogCache.has(shard)) {
     catalogCache.set(shard, fetch(`${CATALOG_URL}/${shard}.json?v=2026-06-10`).then((response) => {
       if (!response.ok) {
@@ -610,6 +692,7 @@ function applyCatalogPart([partNumber, name, category, sourceCategory, material]
   document.querySelector("#brick-category").value = category;
   selectedCatalogPart = { sourceCategory, material };
   setCatalogStatus(t("catalogMatch", { category: sourceCategory, material }), true);
+  refreshCatalogPhoto();
 }
 
 function setCatalogStatus(message, isMatch = false) {
@@ -638,12 +721,23 @@ function createId() {
   ].join("-");
 }
 
-function setPhotoPreview(image) {
-  pendingImage = image;
+function setPhotoPreview(image, isCatalogImage = false) {
+  pendingImage = isCatalogImage ? null : image;
+  pendingCatalogImage = isCatalogImage ? image : null;
   elements.photoPreview.src = image ?? "";
   elements.photoPreview.hidden = !image;
   elements.photoPlaceholder.hidden = Boolean(image);
   elements.removePhoto.hidden = !image;
+}
+
+async function refreshCatalogPhoto() {
+  if (pendingImage || !elements.partNumber.value.trim()) return;
+  try {
+    const image = await findCatalogPhoto(elements.partNumber.value, elements.brickColor.value);
+    if (image) setPhotoPreview(image, true);
+  } catch (error) {
+    console.error("Catalog photo lookup failed:", error);
+  }
 }
 
 async function handlePhotoSelection(event) {
@@ -715,6 +809,114 @@ function handleDeleteConfirmation() {
   state.pendingDeleteId = null;
 }
 
+function openSetsDialog() {
+  elements.setSearch.value = "";
+  elements.setSearchResults.replaceChildren();
+  elements.setDetails.hidden = true;
+  elements.setsDialog.showModal();
+  elements.setSearch.focus();
+}
+
+async function handleSetSearch() {
+  const query = elements.setSearch.value.trim();
+  elements.setDetails.hidden = true;
+  if (query.length < 2) {
+    elements.setSearchResults.replaceChildren();
+    return;
+  }
+  try {
+    const matches = await searchSets(query);
+    elements.setSearchResults.replaceChildren(...matches.map((set) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "set-result";
+      button.dataset.set = JSON.stringify(set);
+      const name = document.createElement("strong");
+      name.textContent = `${set[0]} - ${set[1]}`;
+      const meta = document.createElement("span");
+      meta.textContent = `${set[2]} / ${formatNumber(set[3])}`;
+      button.append(name, meta);
+      return button;
+    }));
+  } catch (error) {
+    console.error("Set search failed:", error);
+  }
+}
+
+async function handleSetSelection(event) {
+  const button = event.target.closest("[data-set]");
+  if (!button) return;
+  const set = JSON.parse(button.dataset.set);
+  const requiredParts = await loadSetParts(set[5]);
+  const normalizedInventory = state.items.map((item) => ({
+    ...item,
+    color: canonicalColorId(item.color)
+  }));
+  const missing = calculateMissingParts(requiredParts, normalizedInventory);
+  const requiredTotal = requiredParts.reduce((sum, part) => sum + part[2], 0);
+  const missingTotal = missing.reduce((sum, part) => sum + part.missing, 0);
+
+  const summary = document.createElement("div");
+  summary.className = "set-summary";
+  const image = document.createElement("img");
+  image.src = set[4];
+  image.alt = set[1];
+  image.loading = "lazy";
+  const text = document.createElement("div");
+  const title = document.createElement("h3");
+  title.textContent = `${set[0]} - ${set[1]}`;
+  const progress = document.createElement("p");
+  progress.textContent = t("setProgress", {
+    owned: formatNumber(requiredTotal - missingTotal),
+    required: formatNumber(requiredTotal)
+  });
+  const missingTitle = document.createElement("strong");
+  missingTitle.textContent = t("missingParts", { count: formatNumber(missingTotal) });
+  text.append(title, progress, missingTitle);
+  summary.append(image, text);
+
+  const list = document.createElement("div");
+  list.className = "missing-parts";
+  missing.slice(0, 500).forEach((part) => {
+    const row = document.createElement("div");
+    row.className = "missing-part";
+    const label = document.createElement("span");
+    label.textContent = `${part.partNumber} / ${getColorLabel(part.color)}`;
+    const quantity = document.createElement("strong");
+    quantity.textContent = `-${formatNumber(part.missing)}`;
+    row.append(label, quantity);
+    list.append(row);
+  });
+  elements.setDetails.replaceChildren(summary, list);
+  elements.setDetails.hidden = false;
+}
+
+async function openScanner(target) {
+  scannerTarget = target;
+  if (!scannerSupported()) {
+    showToast(t("scannerUnsupported"));
+    target.focus();
+    return;
+  }
+  elements.scannerDialog.showModal();
+  try {
+    await startScanner(elements.scannerVideo, (value) => {
+      scannerTarget.value = value;
+      scannerTarget.dispatchEvent(new Event("input", { bubbles: true }));
+      closeScanner();
+    });
+  } catch (error) {
+    console.error("Scanner failed:", error);
+    closeScanner();
+    showToast(t("scannerUnsupported"));
+  }
+}
+
+function closeScanner() {
+  stopScanner(elements.scannerVideo);
+  if (elements.scannerDialog.open) elements.scannerDialog.close();
+}
+
 function clearFilters() {
   state.filters = { search: "", category: "", color: "", sort: "name" };
   elements.search.value = "";
@@ -724,7 +926,7 @@ function clearFilters() {
   renderInventory();
 }
 
-function commitItems(nextItems) {
+function commitItems(nextItems, createBackup = true) {
   const localCopySaved = saveLocalMirror(nextItems);
 
   if (!localCopySaved && filePermissionState !== "granted") {
@@ -732,11 +934,61 @@ function commitItems(nextItems) {
     return false;
   }
 
+  if (createBackup) {
+    saveSnapshot(state.items, "collection-change").catch((error) => {
+      console.error("Snapshot saving failed:", error);
+    });
+  }
   state.items = nextItems;
   rebuildFilterOptions();
   render();
   queueFileSave(nextItems);
   return true;
+}
+
+async function undoLastChange() {
+  try {
+    const items = await takeLatestSnapshot();
+    if (!items) {
+      showToast(t("undoEmpty"));
+      return;
+    }
+    commitItems(migrateInventory(items).items, false);
+    showToast(t("restored"));
+  } catch (error) {
+    console.error("Undo failed:", error);
+    showToast(t("storageError"));
+  }
+}
+
+async function openBackupsDialog() {
+  elements.backupsDialog.showModal();
+  const snapshots = await listSnapshots();
+  elements.backupsList.replaceChildren(...snapshots.map((snapshot) => {
+    const row = document.createElement("div");
+    row.className = "backup-row";
+    const label = document.createElement("span");
+    label.textContent = new Intl.DateTimeFormat(state.language, {
+      dateStyle: "medium", timeStyle: "medium"
+    }).format(new Date(snapshot.createdAt));
+    const button = document.createElement("button");
+    button.className = "button button-secondary";
+    button.type = "button";
+    button.dataset.snapshot = snapshot.createdAt;
+    button.textContent = t("restored").replace(".", "");
+    row.append(label, button);
+    return row;
+  }));
+}
+
+async function restoreSelectedBackup(event) {
+  const button = event.target.closest("[data-snapshot]");
+  if (!button) return;
+  const snapshot = (await listSnapshots()).find((item) => item.createdAt === button.dataset.snapshot);
+  if (!snapshot) return;
+  commitItems(migrateInventory(JSON.parse(snapshot.serialized)).items);
+  elements.backupsDialog.close();
+  showToast(t("restored"));
 }
 
 function saveLocalMirror(items) {
@@ -770,8 +1022,7 @@ async function importInventory(event) {
   if (!file) return;
 
   try {
-    const data = JSON.parse(await file.text());
-    if (!validateInventory(data)) throw new Error("Invalid schema");
+    const data = migrateInventory(JSON.parse(await file.text()));
     clearFilters();
     if (!commitItems(data.items)) return;
     showToast(t("imported"));
@@ -805,11 +1056,47 @@ function showToast(message) {
   toastTimer = setTimeout(() => elements.toast.classList.remove("is-visible"), 2600);
 }
 
-function registerServiceWorker() {
+async function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) return;
-  navigator.serviceWorker.register("./service-worker.js").catch((error) => {
-    console.error("Service worker registration failed:", error);
+
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (reloadingForUpdate) return;
+    reloadingForUpdate = true;
+    window.location.reload();
   });
+
+  try {
+    serviceWorkerRegistration = await navigator.serviceWorker.register(
+      "./service-worker.js?v=1.0b",
+      { updateViaCache: "none" }
+    );
+
+    if (serviceWorkerRegistration.waiting && navigator.serviceWorker.controller) {
+      showServiceWorkerUpdate();
+    }
+
+    serviceWorkerRegistration.addEventListener("updatefound", () => {
+      const worker = serviceWorkerRegistration.installing;
+      if (!worker) return;
+      worker.addEventListener("statechange", () => {
+        if (worker.state === "installed" && navigator.serviceWorker.controller) {
+          showServiceWorkerUpdate();
+        }
+      });
+    });
+  } catch (error) {
+    console.error("Service worker registration failed:", error);
+  }
+}
+
+function showServiceWorkerUpdate() {
+  elements.updateBanner.hidden = false;
+}
+
+function activateServiceWorkerUpdate() {
+  if (!serviceWorkerRegistration?.waiting) return;
+  elements.updateButton.disabled = true;
+  serviceWorkerRegistration.waiting.postMessage({ type: "SKIP_WAITING" });
 }
 
 initialize();

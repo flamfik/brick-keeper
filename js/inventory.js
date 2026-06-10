@@ -46,6 +46,7 @@ export function upsertInventoryRecord(items, record, existingId = null) {
     year: record.year ?? duplicate.year,
     notes: record.notes || duplicate.notes,
     image: record.image ?? duplicate.image,
+    catalogImage: record.catalogImage ?? duplicate.catalogImage,
     catalog: record.catalog ?? duplicate.catalog,
     updatedAt: record.updatedAt
   };
