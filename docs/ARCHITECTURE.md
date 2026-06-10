@@ -44,6 +44,12 @@ Contains translation dictionaries and a small dotted-key resolver. Stored
 records use stable keys such as `plates` and `red`; translated labels are
 computed only when rendering.
 
+### `data/catalog/*.json`
+
+Read-only part metadata generated from the CSV database. Files are sharded by
+the first three normalized characters of `part_num`. A lookup for `3001`, for
+example, requests only `data/catalog/300.json`.
+
 ## Item schema
 
 | Field | Type | Required | Description |
@@ -58,6 +64,7 @@ computed only when rendering.
 | `year` | integer/null | no | Release or production year |
 | `notes` | string | no | Free-form note |
 | `image` | data URL/null | no | Locally compressed WebP part photo |
+| `catalog` | object/null | no | Source category and material from the reference catalog |
 | `createdAt` | ISO date | recommended | Used by recent-first sorting |
 | `updatedAt` | ISO date | recommended | Last edit timestamp |
 

@@ -25,6 +25,7 @@ jobs:
           node --check js/app.js
           node --check js/i18n.js
           node --check js/storage.js
+          node --check tools/build-catalog.mjs
           node --check tools/server.mjs
 
       - name: Validate starter inventory

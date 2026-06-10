@@ -800,6 +800,16 @@ dialog::backdrop {
   resize: vertical;
 }
 
+.catalog-status {
+  min-height: 17px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.catalog-status.is-match {
+  color: var(--green);
+}
+
 .photo-editor {
   display: grid;
   grid-template-columns: 160px 1fr;

@@ -44,7 +44,10 @@ export function validateInventory(value) {
     Number.isInteger(item.quantity) &&
     item.quantity >= 0 &&
     (item.image === undefined || item.image === null ||
-      (typeof item.image === "string" && item.image.startsWith("data:image/")))
+      (typeof item.image === "string" && item.image.startsWith("data:image/"))) &&
+    (item.catalog === undefined || item.catalog === null ||
+      (typeof item.catalog.sourceCategory === "string" &&
+        typeof item.catalog.material === "string"))
   ));
 }
 

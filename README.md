@@ -13,6 +13,7 @@ Spanish.
 - instant search, category/color filters and sorting;
 - adding, editing, deleting and quickly counting parts;
 - optional part photos, resized and compressed locally before saving;
+- part-number lookup backed by an optimized CSV-derived reference catalog;
 - import and export using a documented JSON format;
 - local persistence with `localStorage`;
 - Polish, English and Spanish interface;
@@ -61,6 +62,28 @@ download the current collection and **Import** to restore or move it.
 Photos are stored as compressed WebP data URLs in the item's optional `image`
 field. This keeps exported JSON self-contained. Browser storage is limited, so
 large photo collections should be exported regularly.
+
+## Reference catalog
+
+The add/edit form searches an optimized catalog generated from
+`BrickKeeper_DB/parts.csv` and `part_categories.csv`. The browser fetches only
+the shard matching the first three characters of a part number, so the full
+catalog is never loaded at startup and individual requests remain small.
+
+To rebuild the catalog after replacing the source CSV files:
+
+```bash
+node tools/build-catalog.mjs path/to/BrickKeeper_DB data/catalog
+```
+
+On Windows, the equivalent PowerShell command is:
+
+```powershell
+.\tools\build-catalog.ps1 path\to\BrickKeeper_DB data\catalog
+```
+
+The generated catalog is read-only reference data. The user's quantities,
+locations, notes and photos remain in the versioned collection JSON.
 
 Browsers cannot directly overwrite a project JSON file without a backend or
 explicit File System Access API permission. This design keeps the app portable,

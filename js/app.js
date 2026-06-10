@@ -1,12 +1,13 @@
-import { translate } from "./i18n.js?v=0.9.2";
+import { translate } from "./i18n.js?v=0.9.3";
 import {
   loadStoredInventory,
   saveInventory,
   serializeInventory,
   validateInventory
-} from "./storage.js?v=0.9.2";
+} from "./storage.js?v=0.9.3";
 
-const DATA_URL = "./data/bricks.json?v=0.9.2";
+const DATA_URL = "./data/bricks.json?v=0.9.3";
+const CATALOG_URL = "./data/catalog";
 const MAX_IMAGE_FILE_SIZE = 10 * 1024 * 1024;
 const MAX_IMAGE_DIMENSION = 1200;
 const IMAGE_QUALITY = 0.82;
@@ -42,6 +43,9 @@ const state = {
 };
 
 let pendingImage = null;
+let selectedCatalogPart = null;
+let catalogRequestId = 0;
+const catalogCache = new Map();
 
 const elements = {
   grid: document.querySelector("#brick-grid"),
@@ -69,6 +73,9 @@ const elements = {
   photoPreview: document.querySelector("#photo-preview-image"),
   photoPlaceholder: document.querySelector("#photo-preview .photo-placeholder"),
   removePhoto: document.querySelector("#remove-photo"),
+  partNumber: document.querySelector("#brick-part-number"),
+  catalogSuggestions: document.querySelector("#part-catalog-suggestions"),
+  catalogStatus: document.querySelector("#catalog-status"),
   confirmDialog: document.querySelector("#confirm-dialog"),
   toast: document.querySelector("#toast"),
   statParts: document.querySelector("#stat-parts"),
@@ -144,6 +151,7 @@ function bindEvents() {
   elements.brickForm.addEventListener("submit", saveBrickFromForm);
   elements.photoInput.addEventListener("change", handlePhotoSelection);
   elements.removePhoto.addEventListener("click", () => setPhotoPreview(null));
+  elements.partNumber.addEventListener("input", handlePartCatalogSearch);
   elements.grid.addEventListener("click", handleGridAction);
   elements.importButton.addEventListener("click", () => elements.fileInput.click());
   elements.fileInput.addEventListener("change", importInventory);
@@ -328,6 +336,13 @@ function updateQuantity(item, delta) {
 function openEditor(item = null) {
   elements.brickForm.reset();
   setPhotoPreview(item?.image ?? null);
+  selectedCatalogPart = item?.catalog ?? null;
+  setCatalogStatus(item?.catalog
+    ? t("catalogMatch", {
+      category: item.catalog.sourceCategory,
+      material: item.catalog.material
+    })
+    : t("catalogHint"), Boolean(item?.catalog));
   document.querySelector("#brick-id").value = item?.id ?? "";
   document.querySelector("#brick-quantity").value = item?.quantity ?? 1;
   document.querySelector("#brick-name").value = item?.name ?? "";
@@ -366,6 +381,7 @@ function saveBrickFromForm(event) {
     year: data.get("year") ? Number.parseInt(data.get("year"), 10) : null,
     notes: String(data.get("notes")).trim(),
     image: pendingImage,
+    catalog: selectedCatalogPart,
     createdAt: existing?.createdAt ?? timestamp,
     updatedAt: timestamp
   };
@@ -377,6 +393,75 @@ function saveBrickFromForm(event) {
   if (!commitItems(nextItems)) return;
   closeEditor();
   showToast(t("saved"));
+}
+
+async function handlePartCatalogSearch(event) {
+  const query = event.target.value.trim().toLowerCase();
+  const requestId = ++catalogRequestId;
+  selectedCatalogPart = null;
+  elements.catalogSuggestions.replaceChildren();
+
+  if (query.length < 3) {
+    setCatalogStatus(t("catalogHint"));
+    return;
+  }
+
+  setCatalogStatus(t("catalogSearching"));
+
+  try {
+    const records = await loadCatalogShard(query);
+    if (requestId !== catalogRequestId) return;
+
+    const matches = records
+      .filter(([partNumber]) => partNumber.toLowerCase().startsWith(query))
+      .slice(0, 20);
+
+    elements.catalogSuggestions.replaceChildren(...matches.map(([partNumber, name]) => {
+      const option = document.createElement("option");
+      option.value = partNumber;
+      option.label = name;
+      return option;
+    }));
+
+    const exact = records.find(([partNumber]) => partNumber.toLowerCase() === query);
+    if (exact) {
+      applyCatalogPart(exact);
+    } else if (matches.length) {
+      setCatalogStatus(t("catalogSuggestions", { count: matches.length }));
+    } else {
+      setCatalogStatus(t("catalogNoMatch"));
+    }
+  } catch (error) {
+    console.error("Part catalog search failed:", error);
+    setCatalogStatus(t("catalogUnavailable"));
+  }
+}
+
+async function loadCatalogShard(query) {
+  const shard = query.replace(/[^a-z0-9]/g, "_").padEnd(3, "_").slice(0, 3);
+  if (!catalogCache.has(shard)) {
+    catalogCache.set(shard, fetch(`${CATALOG_URL}/${shard}.json?v=2026-06-10`).then((response) => {
+      if (!response.ok) {
+        if (response.status === 404) return [];
+        throw new Error(`HTTP ${response.status}`);
+      }
+      return response.json();
+    }));
+  }
+  return catalogCache.get(shard);
+}
+
+function applyCatalogPart([partNumber, name, category, sourceCategory, material]) {
+  elements.partNumber.value = partNumber;
+  document.querySelector("#brick-name").value = name;
+  document.querySelector("#brick-category").value = category;
+  selectedCatalogPart = { sourceCategory, material };
+  setCatalogStatus(t("catalogMatch", { category: sourceCategory, material }), true);
+}
+
+function setCatalogStatus(message, isMatch = false) {
+  elements.catalogStatus.textContent = message;
+  elements.catalogStatus.classList.toggle("is-match", isMatch);
 }
 
 /**

@@ -9,9 +9,9 @@
       content="Brick Keeper - szybki, lokalny organizer kolekcji klocków LEGO."
     >
     <title>Brick Keeper</title>
-    <link rel="preload" href="styles.css?v=0.9.2" as="style">
-    <link rel="stylesheet" href="styles.css?v=0.9.2">
-    <script type="module" src="js/app.js?v=0.9.2"></script>
+    <link rel="preload" href="styles.css?v=0.9.3" as="style">
+    <link rel="stylesheet" href="styles.css?v=0.9.3">
+    <script type="module" src="js/app.js?v=0.9.3"></script>
   </head>
   <body>
     <a class="skip-link" href="#inventory" data-i18n="skipToInventory">
@@ -256,7 +256,17 @@
           </label>
           <label class="field">
             <span data-i18n="partNumber">Numer części</span>
-            <input id="brick-part-number" name="partNumber" type="text" maxlength="30" required>
+            <input
+              id="brick-part-number"
+              name="partNumber"
+              type="text"
+              maxlength="30"
+              list="part-catalog-suggestions"
+              autocomplete="off"
+              required
+            >
+            <datalist id="part-catalog-suggestions"></datalist>
+            <small class="catalog-status" id="catalog-status" aria-live="polite"></small>
           </label>
           <label class="field">
             <span data-i18n="quantity">Ilość</span>
