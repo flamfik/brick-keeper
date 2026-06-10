@@ -17,6 +17,7 @@ downloads and File input.
 6. If no fallback exists, `data/bricks.json` is fetched and persisted.
 7. The UI is rendered from the in-memory `state` object.
 8. Mutations update the local fallback and are queued for ordered file writes.
+9. A service worker caches the versioned application shell for offline use.
 
 ## Modules
 
@@ -48,6 +49,12 @@ IndexedDB. The app never receives access to other files or directories. File
 writes are serialized in `app.js` so rapid quantity changes cannot race and
 overwrite newer data with an older snapshot.
 
+### `js/inventory.js`
+
+Contains pure collection identity and merge rules. Keeping this logic outside
+the DOM controller makes legacy color normalization and duplicate behavior
+directly testable with Node.js.
+
 ### `js/i18n.js`
 
 Contains translation dictionaries and a small dotted-key resolver. Stored
@@ -60,6 +67,12 @@ Read-only part metadata generated from the CSV database. Files are sharded by
 the first three normalized characters of `part_num`. A lookup for `3001`, for
 example, requests only `data/catalog/300.json`.
 
+### `data/colors.json`
+
+Compact records generated from `BrickKeeper_DB/colors.csv`. Each record stores
+the stable color ID, official name, RGB value, transparency flag and popularity
+count. The UI resolves legacy color keys to these IDs at runtime.
+
 ## Item schema
 
 | Field | Type | Required | Description |
@@ -68,7 +81,7 @@ example, requests only `data/catalog/300.json`.
 | `name` | string | yes | Human-readable part name |
 | `partNumber` | string | yes | Manufacturer/catalog number |
 | `category` | string | yes | Key listed in `CATEGORY_KEYS` |
-| `color` | string | yes | Key listed in `COLOR_MAP` |
+| `color` | string | yes | Stable ID from `data/colors.json` or a supported legacy key |
 | `quantity` | integer | yes | Number greater than or equal to zero |
 | `location` | string | no | Physical storage location |
 | `year` | integer/null | no | Release or production year |
@@ -87,9 +100,16 @@ example, requests only `data/catalog/300.json`.
 
 ## Adding categories or colors
 
-Categories are controlled by `CATEGORY_KEYS`; colors are controlled by
-`COLOR_MAP`, both in `js/app.js`. Every new key needs a label in each language
-dictionary.
+Categories are controlled by `CATEGORY_KEYS` in `js/app.js`. Colors are rebuilt
+from `colors.csv`; only the common legacy names have localized labels, while
+the remaining catalog entries display their official source names.
+
+## Duplicate identity
+
+Two records are duplicates when their trimmed, case-insensitive part numbers
+and canonical color IDs match. Saving a duplicate adds its quantity to the
+existing record. Editing one record into another duplicate removes the edited
+record and merges it into the existing target.
 
 ## Security model
 

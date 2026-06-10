@@ -32,6 +32,8 @@ Open <http://localhost:8080> and use browser developer tools for testing.
 7. Export data, change the collection and import the exported file.
 8. Reload the page and verify persistence, including the photo.
 9. Check desktop and mobile widths.
+10. Add the same part and color twice; verify that the quantities merge.
+11. Install the PWA and verify that the application shell opens offline.
 
 ## Pull requests
 

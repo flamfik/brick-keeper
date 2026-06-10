@@ -25,10 +25,16 @@ jobs:
           node --check js/app.js
           node --check js/file-storage.js
           node --check js/i18n.js
+          node --check js/inventory.js
           node --check js/storage.js
+          node --check service-worker.js
           node --check tools/build-catalog.mjs
+          node --check tools/build-colors.mjs
+          node --check tools/build-icons.mjs
           node --check tools/server.mjs
 
       - name: Validate starter inventory
         run: |
           node -e "const data=require('./data/bricks.json'); if(data.schemaVersion!==1||!Array.isArray(data.items)) process.exit(1)"
+          node -e "const fs=require('fs'); const data=JSON.parse(fs.readFileSync('./data/colors.json','utf8').replace(/^\uFEFF/,'')); if(data.schemaVersion!==1||data.colors.length<200) process.exit(1)"
+          node tools/test-inventory.mjs

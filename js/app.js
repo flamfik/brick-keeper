@@ -1,4 +1,9 @@
-import { translate } from "./i18n.js?v=0.9.4";
+import { translate } from "./i18n.js?v=0.9.6";
+import {
+  canonicalColorId,
+  LEGACY_COLOR_IDS,
+  upsertInventoryRecord
+} from "./inventory.js?v=0.9.6";
 import {
   getFilePermission,
   loadStoredFileHandle,
@@ -7,15 +12,16 @@ import {
   storeFileHandle,
   supportsFileStorage,
   writeInventoryFile
-} from "./file-storage.js?v=0.9.4";
+} from "./file-storage.js?v=0.9.6";
 import {
   loadStoredInventory,
   saveInventory,
   serializeInventory,
   validateInventory
-} from "./storage.js?v=0.9.4";
+} from "./storage.js?v=0.9.6";
 
-const DATA_URL = "./data/bricks.json?v=0.9.4";
+const DATA_URL = "./data/bricks.json?v=0.9.6";
+const COLORS_URL = "./data/colors.json?v=0.9.6";
 const CATALOG_URL = "./data/catalog";
 const MAX_IMAGE_FILE_SIZE = 10 * 1024 * 1024;
 const MAX_IMAGE_DIMENSION = 1200;
@@ -23,17 +29,20 @@ const IMAGE_QUALITY = 0.82;
 const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const SUPPORTED_LANGUAGES = ["pl", "en", "es"];
 const CATEGORY_KEYS = ["bricks", "plates", "tiles", "slopes", "technic", "minifigures", "special"];
-const COLOR_MAP = {
-  red: "#d9272e",
-  blue: "#2864cf",
-  yellow: "#f2c433",
-  green: "#238557",
-  black: "#252827",
-  white: "#f7f5ef",
-  gray: "#8a918d",
-  orange: "#e97825",
-  tan: "#c5ab79"
-};
+const COLOR_TRANSLATION_KEYS = Object.fromEntries(
+  Object.entries(LEGACY_COLOR_IDS).map(([key, id]) => [id, key])
+);
+const FALLBACK_COLORS = [
+  ["0", "Black", "#05131D", false, 0],
+  ["15", "White", "#FFFFFF", false, 0],
+  ["71", "Light Bluish Gray", "#A0A5A9", false, 0],
+  ["4", "Red", "#C91A09", false, 0],
+  ["14", "Yellow", "#F2CD37", false, 0],
+  ["1", "Blue", "#0055BF", false, 0],
+  ["19", "Tan", "#E4CD9E", false, 0],
+  ["2", "Green", "#237841", false, 0],
+  ["25", "Orange", "#FE8A18", false, 0]
+];
 
 /**
  * All mutable application data lives in one small state object. Rendering is
@@ -57,6 +66,8 @@ let catalogRequestId = 0;
 let inventoryFileHandle = null;
 let filePermissionState = "unavailable";
 let fileSaveQueue = Promise.resolve();
+let colorRecords = FALLBACK_COLORS;
+let colorById = new Map(colorRecords.map((record) => [record[0], record]));
 const catalogCache = new Map();
 
 const elements = {
@@ -104,6 +115,7 @@ async function initialize() {
   bindEvents();
   elements.language.value = state.language;
   applyTranslations();
+  await loadColorCatalog();
 
   const loadedFromFile = await restoreConnectedFile();
   if (!loadedFromFile) {
@@ -128,6 +140,22 @@ async function initialize() {
   updateFileStorageUi();
   rebuildFilterOptions();
   render();
+  registerServiceWorker();
+}
+
+async function loadColorCatalog() {
+  try {
+    const response = await fetch(COLORS_URL);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data = await response.json();
+    if (!data || data.schemaVersion !== 1 || !Array.isArray(data.colors)) {
+      throw new Error("Invalid color catalog");
+    }
+    colorRecords = data.colors;
+    colorById = new Map(colorRecords.map((record) => [String(record[0]), record]));
+  } catch (error) {
+    console.error("Color catalog loading failed:", error);
+  }
 }
 
 async function restoreConnectedFile() {
@@ -187,6 +215,7 @@ async function connectInventoryFile() {
     state.items = data.items;
     clearFilters();
     updateFileStorageUi();
+    rebuildFilterOptions();
     render();
     showToast(t("fileConnectedToast"));
   } catch (error) {
@@ -303,11 +332,13 @@ function updateFileStorageUi() {
 
 /**
  * Rebuilds localized select options while preserving current selections.
- * Categories and colors are sourced from stable keys rather than display text.
+ * Color IDs come from the CSV-derived catalog and remain language-independent.
  */
 function rebuildFilterOptions() {
   const categoryValue = state.filters.category;
   const colorValue = state.filters.color;
+  const usedColors = [...new Set(state.items.map((item) => canonicalColorId(item.color)))]
+    .sort((a, b) => getColorLabel(a).localeCompare(getColorLabel(b), state.language));
 
   replaceOptions(elements.categoryFilter, [
     ["", t("allCategories")],
@@ -316,13 +347,13 @@ function rebuildFilterOptions() {
 
   replaceOptions(elements.colorFilter, [
     ["", t("allColors")],
-    ...Object.keys(COLOR_MAP).map((key) => [key, t(`colorNames.${key}`)])
+    ...usedColors.map((id) => [id, getColorLabel(id)])
   ]);
 
   replaceOptions(document.querySelector("#brick-category"),
     CATEGORY_KEYS.map((key) => [key, t(`categories.${key}`)]));
   replaceOptions(document.querySelector("#brick-color"),
-    Object.keys(COLOR_MAP).map((key) => [key, t(`colorNames.${key}`)]));
+    colorRecords.map(([id]) => [String(id), getColorLabel(String(id))]));
 
   elements.categoryFilter.value = categoryValue;
   elements.colorFilter.value = colorValue;
@@ -339,14 +370,14 @@ function render() {
 
 function renderStats() {
   const totalQuantity = state.items.reduce((sum, item) => sum + item.quantity, 0);
-  const colors = [...new Set(state.items.map((item) => item.color))];
+  const colors = [...new Set(state.items.map((item) => canonicalColorId(item.color)))];
 
   elements.statParts.textContent = formatNumber(state.items.length);
   elements.statItems.textContent = formatNumber(totalQuantity);
   elements.statColors.textContent = formatNumber(colors.length);
   elements.colorDots.replaceChildren(...colors.slice(0, 9).map((color) => {
     const dot = document.createElement("i");
-    dot.style.background = COLOR_MAP[color] ?? "#999";
+    dot.style.background = getColorHex(color);
     return dot;
   }));
 }
@@ -357,7 +388,7 @@ function getVisibleItems() {
     const searchable = `${item.name} ${item.partNumber}`.toLocaleLowerCase(state.language);
     return (!search || searchable.includes(search)) &&
       (!category || item.category === category) &&
-      (!color || item.color === color);
+      (!color || canonicalColorId(item.color) === color);
   });
 
   // Sort a filtered copy, never state.items, so the saved insertion order and
@@ -388,7 +419,7 @@ function renderInventory() {
 
 function createBrickCard(item) {
   const card = elements.cardTemplate.content.firstElementChild.cloneNode(true);
-  const color = COLOR_MAP[item.color] ?? "#999";
+  const color = getColorHex(item.color);
   const photo = card.querySelector(".brick-photo");
   const model = card.querySelector(".brick-model");
 
@@ -404,7 +435,7 @@ function createBrickCard(item) {
   card.querySelector(".part-number").textContent = `# ${item.partNumber}`;
   card.querySelector("h3").textContent = item.name;
   card.querySelector(".color-label").style.setProperty("--dot-color", color);
-  card.querySelector(".color-label b").textContent = t(`colorNames.${item.color}`);
+  card.querySelector(".color-label b").textContent = getColorLabel(item.color);
   card.querySelector(".location-label").textContent = item.location || "—";
   card.querySelector(".quantity").textContent = formatNumber(item.quantity);
   card.querySelector(".edit-button").title = t("edit");
@@ -456,7 +487,9 @@ function openEditor(item = null) {
   document.querySelector("#brick-name").value = item?.name ?? "";
   document.querySelector("#brick-part-number").value = item?.partNumber ?? "";
   document.querySelector("#brick-category").value = item?.category ?? CATEGORY_KEYS[0];
-  document.querySelector("#brick-color").value = item?.color ?? Object.keys(COLOR_MAP)[0];
+  document.querySelector("#brick-color").value = item
+    ? canonicalColorId(item.color)
+    : colorRecords[0][0];
   document.querySelector("#brick-location").value = item?.location ?? "";
   document.querySelector("#brick-year").value = item?.year ?? "";
   document.querySelector("#brick-notes").value = item?.notes ?? "";
@@ -483,7 +516,7 @@ function saveBrickFromForm(event) {
     name: String(data.get("name")).trim(),
     partNumber: String(data.get("partNumber")).trim(),
     category: String(data.get("category")),
-    color: String(data.get("color")),
+    color: canonicalColorId(String(data.get("color"))),
     quantity: Number.parseInt(data.get("quantity"), 10),
     location: String(data.get("location")).trim(),
     year: data.get("year") ? Number.parseInt(data.get("year"), 10) : null,
@@ -494,13 +527,25 @@ function saveBrickFromForm(event) {
     updatedAt: timestamp
   };
 
-  const nextItems = existing
-    ? state.items.map((item) => item.id === existing.id ? record : item)
-    : [...state.items, record];
+  const result = upsertInventoryRecord(state.items, record, existing?.id ?? null);
 
-  if (!commitItems(nextItems)) return;
+  if (!commitItems(result.items)) return;
   closeEditor();
-  showToast(t("saved"));
+  showToast(t(result.merged ? "duplicateMerged" : "saved"));
+}
+
+function getColorRecord(value) {
+  return colorById.get(canonicalColorId(value));
+}
+
+function getColorHex(value) {
+  return getColorRecord(value)?.[2] ?? "#999999";
+}
+
+function getColorLabel(value) {
+  const id = canonicalColorId(value);
+  const translationKey = COLOR_TRANSLATION_KEYS[id];
+  return translationKey ? t(`colorNames.${translationKey}`) : (getColorRecord(id)?.[1] ?? id);
 }
 
 async function handlePartCatalogSearch(event) {
@@ -688,6 +733,7 @@ function commitItems(nextItems) {
   }
 
   state.items = nextItems;
+  rebuildFilterOptions();
   render();
   queueFileSave(nextItems);
   return true;
@@ -757,6 +803,13 @@ function showToast(message) {
   elements.toast.textContent = message;
   elements.toast.classList.add("is-visible");
   toastTimer = setTimeout(() => elements.toast.classList.remove("is-visible"), 2600);
+}
+
+function registerServiceWorker() {
+  if (!("serviceWorker" in navigator)) return;
+  navigator.serviceWorker.register("./service-worker.js").catch((error) => {
+    console.error("Service worker registration failed:", error);
+  });
 }
 
 initialize();
