@@ -42,7 +42,9 @@ export function validateInventory(value) {
     typeof item.category === "string" &&
     typeof item.color === "string" &&
     Number.isInteger(item.quantity) &&
-    item.quantity >= 0
+    item.quantity >= 0 &&
+    (item.image === undefined || item.image === null ||
+      (typeof item.image === "string" && item.image.startsWith("data:image/")))
   ));
 }
 

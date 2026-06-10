@@ -579,6 +579,16 @@ h2 {
   transform: rotate(-9deg) skewY(1deg);
 }
 
+.brick-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.brick-visual:has(.brick-photo:not([hidden])) .brick-model {
+  display: none;
+}
+
 .brick-model::after {
   content: "";
   position: absolute;
@@ -790,6 +800,54 @@ dialog::backdrop {
   resize: vertical;
 }
 
+.photo-editor {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  gap: 18px;
+  align-items: center;
+  padding: 14px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+}
+
+.photo-preview {
+  position: relative;
+  height: 112px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 1px dashed var(--line);
+  background: var(--surface);
+}
+
+.photo-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.photo-placeholder {
+  width: 92px;
+  height: 42px;
+  transform: rotate(-7deg) scale(0.75);
+}
+
+.photo-controls {
+  display: flex;
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.photo-controls small {
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.photo-upload-button {
+  cursor: pointer;
+}
+
 .dialog-actions {
   display: flex;
   justify-content: flex-end;
@@ -951,6 +1009,10 @@ dialog::backdrop {
 
   #brick-form {
     padding: 20px;
+  }
+
+  .photo-editor {
+    grid-template-columns: 1fr;
   }
 }
 

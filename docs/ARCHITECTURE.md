@@ -57,6 +57,7 @@ computed only when rendering.
 | `location` | string | no | Physical storage location |
 | `year` | integer/null | no | Release or production year |
 | `notes` | string | no | Free-form note |
+| `image` | data URL/null | no | Locally compressed WebP part photo |
 | `createdAt` | ISO date | recommended | Used by recent-first sorting |
 | `updatedAt` | ISO date | recommended | Last edit timestamp |
 
@@ -77,6 +78,7 @@ dictionary.
 
 - user-provided text is assigned with `textContent`, not `innerHTML`;
 - imported JSON is parsed and structurally validated;
+- uploaded images are decoded and resized locally; they are never sent to a server;
 - the application has no authentication, analytics or third-party requests;
 - data is scoped to the current browser origin;
 - export requires an explicit user action.
@@ -96,6 +98,11 @@ For collections beyond several thousand visible records:
 2. virtualize off-screen cards;
 3. move filtering to a Web Worker only if profiling proves it necessary;
 4. consider IndexedDB if records or attachments outgrow `localStorage`.
+
+Photos currently remain in JSON as data URLs to preserve simple import/export
+and static hosting. If image-heavy collections become a primary use case,
+moving binary images to IndexedDB while keeping metadata in JSON is the correct
+next storage migration.
 
 These measures are not included prematurely because they add code and failure
 modes without improving normal collection sizes.

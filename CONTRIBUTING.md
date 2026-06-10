@@ -27,10 +27,11 @@ Open <http://localhost:8080> and use browser developer tools for testing.
 2. Search by name and part number.
 3. Filter by category and color, then clear filters.
 4. Add, edit, count and delete an item.
-5. Switch between PL, EN and ES.
-6. Export data, change the collection and import the exported file.
-7. Reload the page and verify persistence.
-8. Check desktop and mobile widths.
+5. Add, replace and remove a JPG, PNG or WebP photo.
+6. Switch between PL, EN and ES.
+7. Export data, change the collection and import the exported file.
+8. Reload the page and verify persistence, including the photo.
+9. Check desktop and mobile widths.
 
 ## Pull requests
 

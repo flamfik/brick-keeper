@@ -223,6 +223,33 @@
 
         <input id="brick-id" name="id" type="hidden">
         <div class="form-grid">
+          <div class="field field-wide">
+            <span data-i18n="photo">Zdjęcie</span>
+            <div class="photo-editor">
+              <div class="photo-preview" id="photo-preview">
+                <div class="brick-model photo-placeholder" aria-hidden="true">
+                  <span></span><span></span><span></span><span></span>
+                </div>
+                <img id="photo-preview-image" alt="" hidden>
+              </div>
+              <div class="photo-controls">
+                <label class="button button-secondary photo-upload-button" for="brick-photo">
+                  <span data-i18n="choosePhoto">Wybierz zdjęcie</span>
+                </label>
+                <input
+                  id="brick-photo"
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  capture="environment"
+                  hidden
+                >
+                <button class="text-button" id="remove-photo" type="button" data-i18n="removePhoto" hidden>
+                  Usuń zdjęcie
+                </button>
+                <small data-i18n="photoHint">JPG, PNG lub WebP, maksymalnie 10 MB.</small>
+              </div>
+            </div>
+          </div>
           <label class="field field-wide">
             <span data-i18n="name">Nazwa</span>
             <input id="brick-name" name="name" type="text" maxlength="80" required>
@@ -260,7 +287,7 @@
           <button class="button button-secondary" id="cancel-dialog" type="button" data-i18n="cancel">
             Anuluj
           </button>
-          <button class="button button-primary" type="submit" data-i18n="save">
+          <button class="button button-primary" id="save-brick" type="submit" data-i18n="save">
             Zapisz
           </button>
         </div>
@@ -284,6 +311,7 @@
       <article class="brick-card">
         <div class="brick-visual">
           <span class="category-badge"></span>
+          <img class="brick-photo" alt="" loading="lazy" decoding="async" hidden>
           <div class="brick-model" aria-hidden="true">
             <span></span><span></span><span></span><span></span>
           </div>

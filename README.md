@@ -12,6 +12,7 @@ Spanish.
 - collection dashboard with totals for parts, pieces and colors;
 - instant search, category/color filters and sorting;
 - adding, editing, deleting and quickly counting parts;
+- optional part photos, resized and compressed locally before saving;
 - import and export using a documented JSON format;
 - local persistence with `localStorage`;
 - Polish, English and Spanish interface;
@@ -56,6 +57,10 @@ python -m http.server 8080
 `data/bricks.json` provides the initial collection. On first use it is copied to
 the browser's `localStorage`; subsequent edits stay there. Use **Export** to
 download the current collection and **Import** to restore or move it.
+
+Photos are stored as compressed WebP data URLs in the item's optional `image`
+field. This keeps exported JSON self-contained. Browser storage is limited, so
+large photo collections should be exported regularly.
 
 Browsers cannot directly overwrite a project JSON file without a backend or
 explicit File System Access API permission. This design keeps the app portable,

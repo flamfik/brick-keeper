@@ -7,6 +7,10 @@ import {
 } from "./storage.js";
 
 const DATA_URL = "./data/bricks.json";
+const MAX_IMAGE_FILE_SIZE = 10 * 1024 * 1024;
+const MAX_IMAGE_DIMENSION = 1200;
+const IMAGE_QUALITY = 0.82;
+const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const SUPPORTED_LANGUAGES = ["pl", "en", "es"];
 const CATEGORY_KEYS = ["bricks", "plates", "tiles", "slopes", "technic", "minifigures", "special"];
 const COLOR_MAP = {
@@ -37,6 +41,8 @@ const state = {
   pendingDeleteId: null
 };
 
+let pendingImage = null;
+
 const elements = {
   grid: document.querySelector("#brick-grid"),
   cardTemplate: document.querySelector("#brick-card-template"),
@@ -58,6 +64,11 @@ const elements = {
   dialogTitle: document.querySelector("#dialog-title"),
   closeDialog: document.querySelector("#close-dialog"),
   cancelDialog: document.querySelector("#cancel-dialog"),
+  saveButton: document.querySelector("#save-brick"),
+  photoInput: document.querySelector("#brick-photo"),
+  photoPreview: document.querySelector("#photo-preview-image"),
+  photoPlaceholder: document.querySelector("#photo-preview .photo-placeholder"),
+  removePhoto: document.querySelector("#remove-photo"),
   confirmDialog: document.querySelector("#confirm-dialog"),
   toast: document.querySelector("#toast"),
   statParts: document.querySelector("#stat-parts"),
@@ -131,6 +142,8 @@ function bindEvents() {
   elements.closeDialog.addEventListener("click", closeEditor);
   elements.cancelDialog.addEventListener("click", closeEditor);
   elements.brickForm.addEventListener("submit", saveBrickFromForm);
+  elements.photoInput.addEventListener("change", handlePhotoSelection);
+  elements.removePhoto.addEventListener("click", () => setPhotoPreview(null));
   elements.grid.addEventListener("click", handleGridAction);
   elements.importButton.addEventListener("click", () => elements.fileInput.click());
   elements.fileInput.addEventListener("change", importInventory);
@@ -260,10 +273,18 @@ function renderInventory() {
 function createBrickCard(item) {
   const card = elements.cardTemplate.content.firstElementChild.cloneNode(true);
   const color = COLOR_MAP[item.color] ?? "#999";
+  const photo = card.querySelector(".brick-photo");
+  const model = card.querySelector(".brick-model");
 
   card.dataset.id = item.id;
   card.querySelector(".category-badge").textContent = t(`categories.${item.category}`);
-  card.querySelector(".brick-model").style.setProperty("--brick-color", color);
+  model.style.setProperty("--brick-color", color);
+  if (item.image) {
+    photo.src = item.image;
+    photo.alt = item.name;
+    photo.hidden = false;
+    model.hidden = true;
+  }
   card.querySelector(".part-number").textContent = `# ${item.partNumber}`;
   card.querySelector("h3").textContent = item.name;
   card.querySelector(".color-label").style.setProperty("--dot-color", color);
@@ -296,13 +317,17 @@ function handleGridAction(event) {
 }
 
 function updateQuantity(item, delta) {
-  item.quantity = Math.max(0, item.quantity + delta);
-  item.updatedAt = new Date().toISOString();
-  persistAndRender();
+  const nextItems = state.items.map((candidate) => candidate.id === item.id ? {
+    ...candidate,
+    quantity: Math.max(0, candidate.quantity + delta),
+    updatedAt: new Date().toISOString()
+  } : candidate);
+  commitItems(nextItems);
 }
 
 function openEditor(item = null) {
   elements.brickForm.reset();
+  setPhotoPreview(item?.image ?? null);
   document.querySelector("#brick-id").value = item?.id ?? "";
   document.querySelector("#brick-quantity").value = item?.quantity ?? 1;
   document.querySelector("#brick-name").value = item?.name ?? "";
@@ -319,16 +344,19 @@ function openEditor(item = null) {
 
 function closeEditor() {
   elements.brickDialog.close();
+  elements.photoInput.value = "";
 }
 
 function saveBrickFromForm(event) {
   event.preventDefault();
+  if (!elements.brickForm.reportValidity()) return;
+
   const data = new FormData(elements.brickForm);
   const id = String(data.get("id"));
   const existing = state.items.find((item) => item.id === id);
   const timestamp = new Date().toISOString();
   const record = {
-    id: existing?.id ?? crypto.randomUUID(),
+    id: existing?.id ?? createId(),
     name: String(data.get("name")).trim(),
     partNumber: String(data.get("partNumber")).trim(),
     category: String(data.get("category")),
@@ -337,16 +365,91 @@ function saveBrickFromForm(event) {
     location: String(data.get("location")).trim(),
     year: data.get("year") ? Number.parseInt(data.get("year"), 10) : null,
     notes: String(data.get("notes")).trim(),
+    image: pendingImage,
     createdAt: existing?.createdAt ?? timestamp,
     updatedAt: timestamp
   };
 
-  if (existing) Object.assign(existing, record);
-  else state.items.push(record);
+  const nextItems = existing
+    ? state.items.map((item) => item.id === existing.id ? record : item)
+    : [...state.items, record];
 
-  persistAndRender();
+  if (!commitItems(nextItems)) return;
   closeEditor();
   showToast(t("saved"));
+}
+
+/**
+ * Generates an identifier even when randomUUID is unavailable, for example
+ * when the application is opened from a non-secure local context.
+ */
+function createId() {
+  if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
+  return `brick-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function setPhotoPreview(image) {
+  pendingImage = image;
+  elements.photoPreview.src = image ?? "";
+  elements.photoPreview.hidden = !image;
+  elements.photoPlaceholder.hidden = Boolean(image);
+  elements.removePhoto.hidden = !image;
+}
+
+async function handlePhotoSelection(event) {
+  const [file] = event.target.files;
+  if (!file) return;
+
+  if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
+    showToast(t("invalidPhoto"));
+    event.target.value = "";
+    return;
+  }
+
+  if (file.size > MAX_IMAGE_FILE_SIZE) {
+    showToast(t("photoTooLarge"));
+    event.target.value = "";
+    return;
+  }
+
+  elements.saveButton.disabled = true;
+  try {
+    setPhotoPreview(await compressImage(file));
+  } catch (error) {
+    console.error("Photo processing failed:", error);
+    showToast(t("invalidPhoto"));
+    event.target.value = "";
+  } finally {
+    elements.saveButton.disabled = false;
+  }
+}
+
+/**
+ * Resizes photos before they enter localStorage or exported JSON. This keeps
+ * cards quick to render and greatly reduces the chance of exceeding quota.
+ */
+async function compressImage(file) {
+  const sourceUrl = URL.createObjectURL(file);
+
+  try {
+    const image = new Image();
+    image.decoding = "async";
+    image.src = sourceUrl;
+    await image.decode();
+
+    const scale = Math.min(1, MAX_IMAGE_DIMENSION / Math.max(image.width, image.height));
+    const width = Math.max(1, Math.round(image.width * scale));
+    const height = Math.max(1, Math.round(image.height * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("Canvas 2D context is unavailable");
+    context.drawImage(image, 0, 0, width, height);
+    return canvas.toDataURL("image/webp", IMAGE_QUALITY);
+  } finally {
+    URL.revokeObjectURL(sourceUrl);
+  }
 }
 
 function requestDelete(id) {
@@ -356,9 +459,8 @@ function requestDelete(id) {
 
 function handleDeleteConfirmation() {
   if (elements.confirmDialog.returnValue === "confirm" && state.pendingDeleteId) {
-    state.items = state.items.filter((item) => item.id !== state.pendingDeleteId);
-    persistAndRender();
-    showToast(t("deleted"));
+    const nextItems = state.items.filter((item) => item.id !== state.pendingDeleteId);
+    if (commitItems(nextItems)) showToast(t("deleted"));
   }
   state.pendingDeleteId = null;
 }
@@ -372,9 +474,18 @@ function clearFilters() {
   renderInventory();
 }
 
-function persistAndRender() {
-  saveInventory(state.items);
+function commitItems(nextItems) {
+  try {
+    saveInventory(nextItems);
+  } catch (error) {
+    console.error("Inventory saving failed:", error);
+    showToast(t("storageError"));
+    return false;
+  }
+
+  state.items = nextItems;
   render();
+  return true;
 }
 
 async function importInventory(event) {
@@ -384,9 +495,8 @@ async function importInventory(event) {
   try {
     const data = JSON.parse(await file.text());
     if (!validateInventory(data)) throw new Error("Invalid schema");
-    state.items = data.items;
     clearFilters();
-    persistAndRender();
+    if (!commitItems(data.items)) return;
     showToast(t("imported"));
   } catch (error) {
     console.error("Inventory import failed:", error);
