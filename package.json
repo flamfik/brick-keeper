@@ -5,10 +5,15 @@
   "type": "module",
   "scripts": {
     "start": "node tools/server.mjs",
-    "test": "node tools/test-inventory.mjs && node tools/test-storage.mjs && node tools/validate-project.mjs",
+    "build:tauri-assets": "node tools/build-tauri.mjs",
+    "build:set-catalog": "node tools/build-set-catalog.mjs",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
+    "test": "node tools/test-inventory.mjs && node tools/test-storage.mjs && node tools/test-file-storage.mjs && node tools/test-sql-storage.mjs && node tools/validate-project.mjs",
     "test:e2e": "playwright test"
   },
   "devDependencies": {
-    "@playwright/test": "1.60.0"
+    "@playwright/test": "1.60.0",
+    "@tauri-apps/cli": "^2.0.0"
   }
 }

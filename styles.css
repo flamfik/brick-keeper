@@ -851,6 +851,62 @@ dialog::backdrop {
   flex: 0 0 auto;
 }
 
+.part-search-control {
+  position: relative;
+}
+
+.catalog-suggestions {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 4px);
+  right: 0;
+  left: 0;
+  max-height: 240px;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: white;
+  box-shadow: 0 12px 30px rgb(14 28 23 / 18%);
+}
+
+.catalog-suggestion {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(72px, auto) 1fr;
+  gap: 12px;
+  align-items: baseline;
+  padding: 10px 12px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+  background: white;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.catalog-suggestion:last-child {
+  border-bottom: 0;
+}
+
+.catalog-suggestion:hover,
+.catalog-suggestion.is-active {
+  background: var(--paper);
+}
+
+.catalog-suggestion strong {
+  font-size: 13px;
+}
+
+.catalog-suggestion span {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .catalog-status {
   min-height: 17px;
   color: var(--muted);

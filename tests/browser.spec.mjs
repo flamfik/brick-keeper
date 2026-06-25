@@ -11,7 +11,10 @@ test("loads the English interface and reference catalogs", async ({ page }) => {
   await expect(page.locator("#stat-parts")).not.toHaveText("0");
 
   await page.locator("#add-brick-button").click();
-  await page.locator("#brick-part-number").fill("3001");
+  await page.locator("#brick-part-number").fill("300");
+  await expect(page.locator("#part-catalog-suggestions")).toBeVisible();
+  await expect(page.locator(".catalog-suggestion")).not.toHaveCount(0);
+  await page.locator('.catalog-suggestion:has-text("3001")').click();
   await expect(page.locator("#catalog-status")).toContainText("Catalog match");
   await expect(page.locator("#brick-name")).toHaveValue("Brick 2 x 4");
 

@@ -1,4 +1,5 @@
 import { translate } from "./i18n.js?v=1.0b";
+import { parseCsvRows } from "./csv.js?v=1.0b";
 import {
   canonicalColorId,
   LEGACY_COLOR_IDS,
@@ -6,6 +7,7 @@ import {
 } from "./inventory.js?v=1.0b";
 import {
   getFilePermission,
+  isTauriRuntime,
   loadStoredFileHandle,
   pickInventoryFile,
   readInventoryFile,
@@ -21,6 +23,13 @@ import {
   saveInventory,
   serializeInventory
 } from "./storage.js?v=1.0b";
+import {
+  loadSqlColors,
+  loadSqlInventory,
+  replaceSqlInventory,
+  searchSqlParts,
+  supportsSqlStorage
+} from "./sql-storage.js?v=1.0b";
 import { listSnapshots, saveSnapshot, takeLatestSnapshot } from "./backups.js?v=1.0b";
 import {
   calculateMissingParts,
@@ -31,7 +40,7 @@ import {
 import { scannerSupported, startScanner, stopScanner } from "./scanner.js?v=1.0b";
 
 const DATA_URL = "./data/bricks.json?v=1.0b";
-const COLORS_URL = "./data/colors.json?v=1.0b";
+const COLORS_URL = "./data/colors.csv?v=1.0b";
 const CATALOG_URL = "./data/catalog";
 const MAX_IMAGE_FILE_SIZE = 10 * 1024 * 1024;
 const MAX_IMAGE_DIMENSION = 1200;
@@ -75,9 +84,13 @@ let pendingImage = null;
 let pendingCatalogImage = null;
 let selectedCatalogPart = null;
 let catalogRequestId = 0;
+let catalogMatches = [];
+let activeCatalogSuggestion = -1;
 let inventoryFileHandle = null;
 let filePermissionState = "unavailable";
 let fileSaveQueue = Promise.resolve();
+let sqlStorageEnabled = false;
+let sqlSaveQueue = Promise.resolve();
 let colorRecords = FALLBACK_COLORS;
 let colorById = new Map(colorRecords.map((record) => [record[0], record]));
 const catalogCache = new Map();
@@ -153,7 +166,8 @@ async function initialize() {
   applyTranslations();
   await loadColorCatalog();
 
-  const loadedFromFile = await restoreConnectedFile();
+  const loadedFromSql = await restoreSqlDatabase();
+  const loadedFromFile = loadedFromSql ? true : await restoreConnectedFile();
   if (!loadedFromFile) {
     const storedItems = loadStoredInventory();
     if (storedItems !== null) {
@@ -171,6 +185,9 @@ async function initialize() {
       }
     }
   }
+  if (sqlStorageEnabled && !loadedFromSql) {
+    queueSqlSave(state.items);
+  }
 
   updateFileStorageUi();
   rebuildFilterOptions();
@@ -180,17 +197,61 @@ async function initialize() {
 }
 
 async function loadColorCatalog() {
+  if (supportsSqlStorage()) {
+    try {
+      const colors = await loadSqlColors();
+      if (colors.length) {
+        colorRecords = colors;
+        colorById = new Map(colorRecords.map((record) => [String(record[0]), record]));
+        return;
+      }
+    } catch (error) {
+      console.error("SQLite color catalog loading failed:", error);
+    }
+  }
+
   try {
     const response = await fetch(COLORS_URL);
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const data = await response.json();
-    if (!data || data.schemaVersion !== 1 || !Array.isArray(data.colors)) {
+    const rows = parseCsvRows(await response.text());
+    const [header, ...colors] = rows;
+    if (header?.join(",") !== "id,name,hex,transparent,partCount" || !colors.length) {
       throw new Error("Invalid color catalog");
     }
-    colorRecords = data.colors;
+    colorRecords = colors
+      .map(([id, name, hex, transparent, partCount]) => [
+        id,
+        name,
+        hex,
+        transparent === "true",
+        Number(partCount)
+      ])
+      .filter(([id, name, hex]) => id && name && hex);
     colorById = new Map(colorRecords.map((record) => [String(record[0]), record]));
   } catch (error) {
     console.error("Color catalog loading failed:", error);
+  }
+}
+
+async function restoreSqlDatabase() {
+  if (!supportsSqlStorage()) return false;
+  sqlStorageEnabled = true;
+
+  try {
+    const items = await loadSqlInventory();
+    if (!items.length) return false;
+    const data = migrateInventory({
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+      appVersion: "1.0b",
+      items
+    });
+    state.items = data.items;
+    saveLocalMirror(state.items);
+    return true;
+  } catch (error) {
+    console.error("SQLite inventory loading failed:", error);
+    sqlStorageEnabled = false;
+    return false;
   }
 }
 
@@ -236,6 +297,7 @@ async function connectInventoryFile() {
     if (!handle || filePermissionState === "granted" || filePermissionState === "error") {
       handle = await pickInventoryFile();
     }
+    if (!handle) return;
 
     const permission = await getFilePermission(handle, true);
     if (permission !== "granted") {
@@ -247,9 +309,9 @@ async function connectInventoryFile() {
     const source = await readInventoryFile(handle);
     const data = migrateInventory(source);
 
+    await storeFileHandle(handle);
     inventoryFileHandle = handle;
     filePermissionState = "granted";
-    await storeFileHandle(handle);
     saveLocalMirror(data.items);
     if (source.schemaVersion !== CURRENT_SCHEMA_VERSION) {
       await writeInventoryFile(handle, serializeInventory(data.items));
@@ -308,6 +370,8 @@ function bindEvents() {
   elements.photoInput.addEventListener("change", handlePhotoSelection);
   elements.removePhoto.addEventListener("click", () => setPhotoPreview(null));
   elements.partNumber.addEventListener("input", handlePartCatalogSearch);
+  elements.partNumber.addEventListener("keydown", handleCatalogSuggestionKeydown);
+  elements.catalogSuggestions.addEventListener("click", handleCatalogSuggestionClick);
   elements.brickColor.addEventListener("change", refreshCatalogPhoto);
   elements.grid.addEventListener("click", handleGridAction);
   elements.importButton.addEventListener("click", () => elements.fileInput.click());
@@ -334,6 +398,10 @@ function bindEvents() {
       event.preventDefault();
       elements.search.focus();
     }
+  });
+
+  document.addEventListener("pointerdown", (event) => {
+    if (!event.target.closest(".part-search-control")) closeCatalogSuggestions();
   });
 }
 
@@ -368,11 +436,14 @@ function updateFileStorageUi() {
   if (!elements.fileStatus) return;
 
   const connected = filePermissionState === "granted" && inventoryFileHandle;
-  elements.connectFileButton.disabled = filePermissionState === "unavailable";
+  elements.connectFileButton.disabled = filePermissionState === "unavailable" && !sqlStorageEnabled;
   elements.connectFileButton.querySelector("span").textContent = t(connected ? "changeFile" : "connectFile");
   elements.fileStatus.classList.toggle("is-connected", Boolean(connected));
 
-  if (connected) {
+  if (sqlStorageEnabled) {
+    elements.fileStatus.textContent = t("databaseConnected");
+    elements.fileStatus.classList.add("is-connected");
+  } else if (connected) {
     elements.fileStatus.textContent = t("fileConnected", { name: inventoryFileHandle.name });
   } else if (filePermissionState === "prompt" || filePermissionState === "denied") {
     elements.fileStatus.textContent = t("filePermissionNeeded");
@@ -387,7 +458,7 @@ function updateFileStorageUi() {
 
 /**
  * Rebuilds localized select options while preserving current selections.
- * Color IDs come from the CSV-derived catalog and remain language-independent.
+ * Color IDs come from the SQL catalog in Tauri or the CSV fallback on the web.
  */
 function rebuildFilterOptions() {
   const categoryValue = state.filters.category;
@@ -555,6 +626,7 @@ function updateQuantity(item, delta) {
 
 function openEditor(item = null) {
   elements.brickForm.reset();
+  closeCatalogSuggestions();
   setPhotoPreview(item?.image ?? item?.catalogImage ?? null, Boolean(item?.catalogImage && !item?.image));
   selectedCatalogPart = item?.catalog ?? null;
   setCatalogStatus(item?.catalog
@@ -580,6 +652,7 @@ function openEditor(item = null) {
 }
 
 function closeEditor() {
+  closeCatalogSuggestions();
   elements.brickDialog.close();
   elements.photoInput.value = "";
 }
@@ -634,7 +707,7 @@ async function handlePartCatalogSearch(event) {
   const query = event.target.value.trim().toLowerCase();
   const requestId = ++catalogRequestId;
   selectedCatalogPart = null;
-  elements.catalogSuggestions.replaceChildren();
+  closeCatalogSuggestions();
 
   if (query.length < 3) {
     setCatalogStatus(t("catalogHint"));
@@ -651,17 +724,11 @@ async function handlePartCatalogSearch(event) {
       .filter(([partNumber]) => partNumber.toLowerCase().startsWith(query))
       .slice(0, 20);
 
-    elements.catalogSuggestions.replaceChildren(...matches.map(([partNumber, name]) => {
-      const option = document.createElement("option");
-      option.value = partNumber;
-      option.label = name;
-      return option;
-    }));
-
     const exact = records.find(([partNumber]) => partNumber.toLowerCase() === query);
     if (exact) {
       applyCatalogPart(exact);
     } else if (matches.length) {
+      renderCatalogSuggestions(matches);
       setCatalogStatus(t("catalogSuggestions", { count: matches.length }));
     } else {
       setCatalogStatus(t("catalogNoMatch"));
@@ -672,21 +739,108 @@ async function handlePartCatalogSearch(event) {
   }
 }
 
+function renderCatalogSuggestions(matches) {
+  catalogMatches = matches;
+  activeCatalogSuggestion = -1;
+  const buttons = matches.map(([partNumber, name], index) => {
+    const button = document.createElement("button");
+    const number = document.createElement("strong");
+    const label = document.createElement("span");
+
+    button.type = "button";
+    button.className = "catalog-suggestion";
+    button.id = `catalog-suggestion-${index}`;
+    button.dataset.index = String(index);
+    button.tabIndex = -1;
+    button.setAttribute("role", "option");
+    button.setAttribute("aria-selected", "false");
+    number.textContent = partNumber;
+    label.textContent = name;
+    button.append(number, label);
+    return button;
+  });
+
+  elements.catalogSuggestions.replaceChildren(...buttons);
+  elements.catalogSuggestions.hidden = false;
+  elements.partNumber.setAttribute("aria-expanded", "true");
+}
+
+function closeCatalogSuggestions() {
+  catalogMatches = [];
+  activeCatalogSuggestion = -1;
+  elements.catalogSuggestions.replaceChildren();
+  elements.catalogSuggestions.hidden = true;
+  elements.partNumber.setAttribute("aria-expanded", "false");
+  elements.partNumber.removeAttribute("aria-activedescendant");
+}
+
+function setActiveCatalogSuggestion(index) {
+  if (!catalogMatches.length) return;
+  activeCatalogSuggestion = (index + catalogMatches.length) % catalogMatches.length;
+
+  elements.catalogSuggestions.querySelectorAll(".catalog-suggestion").forEach((button, buttonIndex) => {
+    const active = buttonIndex === activeCatalogSuggestion;
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-selected", String(active));
+    if (active) {
+      elements.partNumber.setAttribute("aria-activedescendant", button.id);
+      button.scrollIntoView({ block: "nearest" });
+    }
+  });
+}
+
+function handleCatalogSuggestionKeydown(event) {
+  if (elements.catalogSuggestions.hidden) return;
+
+  if (event.key === "ArrowDown") {
+    event.preventDefault();
+    setActiveCatalogSuggestion(activeCatalogSuggestion + 1);
+  } else if (event.key === "ArrowUp") {
+    event.preventDefault();
+    setActiveCatalogSuggestion(activeCatalogSuggestion < 0
+      ? catalogMatches.length - 1
+      : activeCatalogSuggestion - 1);
+  } else if (event.key === "Enter") {
+    event.preventDefault();
+    applyCatalogPart(catalogMatches[Math.max(activeCatalogSuggestion, 0)]);
+  } else if (event.key === "Escape") {
+    event.preventDefault();
+    closeCatalogSuggestions();
+  }
+}
+
+function handleCatalogSuggestionClick(event) {
+  const button = event.target.closest(".catalog-suggestion");
+  if (!button) return;
+  const match = catalogMatches[Number.parseInt(button.dataset.index, 10)];
+  if (match) applyCatalogPart(match);
+}
+
 async function loadCatalogShard(query) {
+  if (supportsSqlStorage()) {
+    try {
+      return await searchSqlParts(query, 20);
+    } catch (error) {
+      console.error("SQLite part catalog search failed:", error);
+    }
+  }
+
   const shard = query.replace(/[^a-z0-9]/g, "_").padEnd(1, "_").slice(0, 1);
   if (!catalogCache.has(shard)) {
-    catalogCache.set(shard, fetch(`${CATALOG_URL}/${shard}.json?v=2026-06-10`).then((response) => {
+    catalogCache.set(shard, fetch(`${CATALOG_URL}/${shard}.csv?v=2026-06-10`).then(async (response) => {
       if (!response.ok) {
         if (response.status === 404) return [];
         throw new Error(`HTTP ${response.status}`);
       }
-      return response.json();
+      const rows = parseCsvRows(await response.text());
+      return rows.slice(1).filter(([partNumber]) => partNumber);
     }));
   }
   return catalogCache.get(shard);
 }
 
 function applyCatalogPart([partNumber, name, category, sourceCategory, material]) {
+  closeCatalogSuggestions();
   elements.partNumber.value = partNumber;
   document.querySelector("#brick-name").value = name;
   document.querySelector("#brick-category").value = category;
@@ -1002,6 +1156,11 @@ function saveLocalMirror(items) {
 }
 
 function queueFileSave(items) {
+  if (sqlStorageEnabled) {
+    queueSqlSave(items);
+    return;
+  }
+
   if (filePermissionState !== "granted" || !inventoryFileHandle) return;
 
   const handle = inventoryFileHandle;
@@ -1014,6 +1173,17 @@ function queueFileSave(items) {
       filePermissionState = "error";
       updateFileStorageUi();
       showToast(t("fileError"));
+    });
+}
+
+function queueSqlSave(items) {
+  const snapshot = items.map((item) => ({ ...item }));
+  sqlSaveQueue = sqlSaveQueue
+    .catch(() => undefined)
+    .then(() => replaceSqlInventory(snapshot))
+    .catch((error) => {
+      console.error("SQLite inventory saving failed:", error);
+      showToast(t("storageError"));
     });
 }
 
@@ -1057,7 +1227,7 @@ function showToast(message) {
 }
 
 async function registerServiceWorker() {
-  if (!("serviceWorker" in navigator)) return;
+  if (isTauriRuntime() || !("serviceWorker" in navigator)) return;
 
   navigator.serviceWorker.addEventListener("controllerchange", () => {
     if (reloadingForUpdate) return;

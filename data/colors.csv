@@ -1,0 +1,274 @@
+id,name,hex,transparent,partCount
+0,Black,#05131D,false,823829
+15,White,#FFFFFF,false,514085
+71,Light Bluish Gray,#A0A5A9,false,509667
+72,Dark Bluish Gray,#6C6E68,false,369450
+4,Red,#C91A09,false,317759
+14,Yellow,#F2CD37,false,213891
+1,Blue,#0055BF,false,205371
+19,Tan,#E4CD9E,false,191882
+70,Reddish Brown,#582A12,false,174439
+7,Light Gray,#9BA19D,false,92813
+2,Green,#237841,false,90081
+28,Dark Tan,#958A73,false,71465
+25,Orange,#FE8A18,false,54349
+297,Pearl Gold,#AA7F2E,false,53709
+272,Dark Blue,#0A3463,false,52666
+320,Dark Red,#720E0F,false,49960
+47,Trans-Clear,#FCFCFC,true,47020
+27,Lime,#BBE90B,false,45401
+84,Medium Nougat,#AA7D55,false,42453
+41,Trans-Light Blue,#AEEFEC,true,32665
+191,Bright Light Orange,#F8BB3D,false,30254
+322,Medium Azure,#36AEBF,false,29944
+484,Dark Orange,#A95500,false,27627
+10,Bright Green,#4B9F4A,false,27550
+288,Dark Green,#184632,false,25903
+378,Sand Green,#A0BCAC,false,25768
+308,Dark Brown,#352100,false,24608
+3,Dark Turquoise,#008F9B,false,23373
+179,Flat Silver,#898788,false,22815
+8,Dark Gray,#6D6E5C,false,22443
+36,Trans-Red,#C91A09,true,20492
+29,Bright Pink,#E4ADC8,false,18750
+85,Dark Purple,#3F3691,false,16903
+321,Dark Azure,#078BC9,false,16519
+5,Dark Pink,#C870A0,false,16181
+182,Trans-Orange,#F08F1C,true,15822
+26,Magenta,#923978,false,13571
+73,Medium Blue,#5A93DB,false,13306
+46,Trans-Yellow,#F5CD2F,true,13278
+226,Bright Light Yellow,#FFF03A,false,12190
+326,Olive Green,#9B9A5A,false,11933
+78,Light Nougat,#F6D7B3,false,11548
+323,Light Aqua,#ADC3C0,false,10789
+33,Trans-Dark Blue,#0020A0,true,10692
+379,Sand Blue,#6074A1,false,10440
+30,Medium Lavender,#AC78BA,false,9802
+212,Bright Light Blue,#9FC3E9,false,9641
+6,Brown,#583927,false,9551
+40,Trans-Brown,#635F52,true,8657
+31,Lavender,#E1D5ED,false,8640
+1050,Coral,#FF698F,false,7802
+1103,Pearl Titanium,#3E3C39,false,7667
+42,Trans-Neon Green,#F8F184,true,6803
+45,Trans-Dark Pink,#DF6695,true,5741
+57,Trans-Neon Orange,#FF800D,true,5613
+135,Pearl Light Gray,#9CA3A8,false,5496
+34,Trans-Green,#84B68D,true,5406
+80,Metallic Silver,#A5A9B4,false,4024
+158,Yellowish Green,#DFEEA5,false,3830
+35,Trans-Bright Green,#D9E4A7,true,3657
+1136,Reddish Orange,#CA4C0B,false,3278
+82,Metallic Gold,#DBAC34,false,3180
+52,Trans-Purple,#A5A5CB,true,3079
+92,Nougat,#D09168,false,3010
+1013,Modulex White,#F4F4F4,false,2998
+1018,Modulex Black,#4D4C52,false,2499
+1062,Vibrant Yellow,#EBD800,false,2379
+1015,Modulex Light Gray,#9C9C9C,false,2249
+1021,Modulex Brown,#907450,false,2223
+334,Chrome Gold,#BBA53D,false,2196
+1022,Modulex Buff,#DEC69C,false,1626
+1020,Modulex Terracotta,#5C5030,false,1622
+1039,Modulex Clear,#FFFFFF,false,1394
+383,Chrome Silver,#E0E0E0,false,1335
+1031,Modulex Olive Green,#7C9051,false,1111
+1028,Modulex Ochre Yellow,#FED557,false,1107
+1033,Modulex Teal Blue,#467083,false,1104
+351,Medium Dark Pink,#F785B1,false,1092
+22,Purple,#81007B,false,1005
+1053,Opal Trans-Light Blue,#68BCC5,true,987
+1055,Opal Trans-Clear,#FCFCFC,true,959
+1095,Trans-Black,#635F52,true,912
+1051,Pastel Blue,#5AC4DA,false,734
+143,Trans-Medium Blue,#CFE2F7,true,704
+1000,Glow in Dark White,#D9D9D9,false,656
+1089,Warm Tan,#CCA373,false,612
+335,Sand Red,#D67572,false,603
+74,Medium Green,#73DCA1,false,571
+148,Pearl Dark Gray,#575857,false,532
+462,Medium Orange,#FFA70B,false,491
+13,Pink,#FC97AC,false,477
+313,Maersk Blue,#3592C3,false,469
+230,Trans-Pink,#E4ADC8,true,434
+1146,Warm Pink,#F6B7BF,false,405
+1147,Blue Violet,#A3A9FF,false,385
+18,Light Yellow,#FBE696,false,340
+118,Aqua,#B3D7D1,false,322
+1059,Opal Trans-Purple,#8320B7,true,310
+151,Very Light Bluish Gray,#E6E3E0,false,282
+503,Very Light Gray,#E6E3DA,false,261
+1094,Trans-Medium Purple,#8D73B3,true,258
+1054,Opal Trans-Dark Pink,#CE1D9B,true,248
+132,Speckle Black-Silver,#05131D,false,244
+79,Milky White,#FFFFFF,false,239
+114,Glitter Trans-Dark Pink,#DF6695,true,234
+43,Trans-Very Lt Blue,#C1DFF0,true,232
+117,Glitter Trans-Clear,#FFFFFF,true,230
+1088,Medium Brown,#755945,false,222
+1017,Modulex Tile Gray,#6B5A5A,false,219
+1004,Trans-Flame Yellowish Orange,#FCB76D,true,214
+1061,Opal Trans-Dark Blue,#0020A0,true,213
+21,Glow In Dark Opaque,#D4D5C9,false,209
+115,Medium Lime,#C7D23C,false,192
+134,Copper,#AE7A59,false,191
+89,Royal Blue,#4C61DB,false,191
+110,Violet,#4354A3,false,191
+54,Trans-Neon Yellow,#DAB000,true,187
+12,Salmon,#F2705E,false,185
+77,Light Pink,#FECCCF,false,184
+20,Light Violet,#C9CAE2,false,182
+1060,Opal Trans-Bright Green,#84B68D,true,182
+100,Light Salmon,#FEBABD,false,180
+137,Pearl Sand Blue,#7988A1,false,171
+366,Earth Orange,#FA9C1C,false,170
+129,Glitter Trans-Purple,#A5A5CB,true,169
+86,Light Brown,#7C503A,false,168
+17,Light Green,#C2DAB8,false,165
+11,Light Turquoise,#55A5AF,false,164
+1019,Modulex Tile Brown,#330000,false,158
+178,Flat Dark Gold,#B48455,false,141
+1056,Opal Trans-Brown,#583927,true,140
+232,Sky Blue,#7DBFDD,false,132
+294,Glow In Dark Trans,#BDC6AD,true,131
+1057,Trans-Light Bright Green,#C9E788,true,119
+69,Light Purple,#CD6298,false,102
+1003,Glitter Trans-Light Blue,#68BCC5,true,91
+1006,Trans-Light Royal Blue,#B4D4F7,true,90
+1034,Modulex Tile Blue,#0057A6,false,80
+1065,Reddish Gold,#AC8247,false,79
+373,Sand Purple,#845E84,false,73
+1063,Pearl Copper,#B46A00,false,72
+236,Trans-Light Purple,#96709F,true,71
+125,Light Orange,#F9BA61,false,66
+112,Medium Bluish Violet,#6874CA,false,62
+1137,Sienna Brown,#915C3C,false,62
+450,Fabuland Brown,#B67B50,false,56
+1135,Metal,#A5ADB4,false,56
+1092,Metallic Copper,#764D3B,false,52
+1093,Light Lilac,#9195CA,false,51
+1007,Reddish Lilac,#8E5597,false,50
+1087,Duplo Pink,#FF879C,false,47
+183,Pearl White,#F2F3F2,false,46
+9,Light Blue,#B4D2E3,false,42
+1058,Trans-Light Green,#94E5AB,true,42
+1086,Pearl Lime,#6A7944,false,41
+1005,Trans-Fire Yellow,#FBE890,true,41
+150,Pearl Very Light Gray,#ABADAC,false,40
+1030,Modulex Pastel Green,#7DB538,false,35
+1073,Pearl Black,#0A1327,false,35
+1072,Pearl Brown,#57392C,false,35
+60,Chrome Antique Brass,#645A4C,false,33
+1082,Clikits Pink,#FE78B0,false,32
+1009,Vintage Green,#1E601E,false,32
+216,Rust,#B31004,false,31
+1010,Vintage Red,#CA1F08,false,31
+120,Light Lime,#D9E4A7,false,29
+142,Pearl Light Gold,#DCBC81,false,28
+61,Chrome Blue,#6C96BF,false,26
+1025,Modulex Orange,#F47B30,false,26
+1023,Modulex Red,#B52C20,false,26
+1141,Neon Green,#D2FC43,false,25
+1069,Pearl Red,#D60026,false,24
+1008,Vintage Blue,#039CBD,false,24
+1011,Vintage Yellow,#F3C305,false,24
+81,Metallic Green,#899B5F,false,23
+1029,Modulex Lemon,#BDC618,false,23
+1139,Opal Trans-Yellow,#F5CD2F,true,23
+1100,Clikits Yellow,#FFCF0B,false,22
+1064,Fabuland Red,#FF8014,false,22
+1102,Trans-Neon Red,#FF0040,true,22
+1070,Pearl Blue,#0059A3,false,21
+1071,Pearl Green,#008E3C,false,21
+1038,Modulex Pink,#F785B1,false,20
+63,Chrome Pink,#AA4D8E,false,19
+1036,Modulex Pastel Blue,#68AECE,false,19
+1091,Warm Yellowish Orange,#FFCB78,false,19
+1068,Bright Reddish Orange,#EE5434,false,16
+1077,Fabuland Lime,#78FC78,false,16
+1032,Modulex Aqua Green,#27867E,false,16
+1138,Umber Brown,#5E3F33,false,16
+68,Very Light Orange,#F3CF9B,false,16
+1129,HO Olive Green,#9B9A5A,false,14
+1140,Neon Orange,#EC4612,false,14
+1001,Medium Violet,#9391E4,false,13
+76,Speckle DBGray-Silver,#6C6E68,false,12
+1142,Dark Olive Green,#5D5C36,false,11
+1110,HO Dark Gray,#6D6E5C,false,11
+1145,Ochre Yellow,#DD9E47,false,11
+64,Chrome Black,#1B2A34,false,10
+1066,Curry,#DD982E,false,10
+1067,Dark Nougat,#AD6140,false,10
+1113,HO Dark Red,#631314,false,10
+1014,Modulex Light Bluish Gray,#AFB5C7,false,10
+75,Speckle Black-Copper,#05131D,false,10
+23,Dark Blue-Violet,#2032B0,false,9
+1002,Glitter Trans-Neon Green,#C0F500,true,9
+1109,HO Dark Blue,#0A3463,false,9
+1027,Modulex Light Yellow,#FFE371,false,8
+1035,Modulex Medium Blue,#61AFFF,false,8
+1026,Modulex Light Orange,#F7AD63,false,7
+1024,Modulex Pink Red,#F45C40,false,7
+1037,Modulex Violet,#BD7D85,false,7
+1074,Duplo Blue,#009ECE,false,6
+1097,Glitter Trans-Medium Purple,#8D73B3,true,6
+1084,Two-tone Gold,#AB673A,false,6
+1085,Two-tone Silver,#737271,false,6
+1076,Duplo Lime,#FFF230,false,5
+1012,Fabuland Orange,#EF9121,false,5
+133,Speckle Black-Gold,#05131D,false,5
+1144,Chrome Red,#CE3021,false,4
+1143,Glitter Milky White,#FFFFFF,false,4
+1111,HO Dark Green,#184632,false,4
+1121,HO Light Tan,#F9F1C7,false,4
+1124,HO Medium Red,#C01111,false,4
+1132,HO Sand Green,#A0BCAC,false,4
+1106,HO Blue-gray,#354E5A,false,3
+1125,HO Metallic Blue,#0D4763,false,3
+1133,HO Tan,#E4CD9E,false,3
+1081,Rust Orange,#872B17,false,3
+62,Chrome Green,#3CB371,false,2
+1090,Duplo Turquoise,#3FB69E,false,2
+1099,Glitter Trans-Pink,#E4ADC8,true,2
+1116,HO Earth Orange,#BB771B,false,2
+1120,HO Light Gold,#CDC298,false,2
+1123,HO Medium Blue,#7396C8,false,2
+1126,HO Metallic Dark Gray,#5E5E5E,false,2
+1131,HO Sand Blue,#6E8AA6,false,2
+1016,Modulex Charcoal Gray,#595D60,false,2
+1083,Two-tone Copper,#945148,false,2
+1101,Duplo Dark Purple,#5F27AA,false,1
+1079,Duplo Light Green,#60BA76,false,1
+1075,Duplo Medium Blue,#3E95B6,false,1
+1078,Duplo Medium Green,#468A5F,false,1
+1098,Glitter Trans-Green,#84B68D,true,1
+1052,Glitter Trans-Orange,#F08F1C,true,1
+1104,HO Aqua,#B3D7D1,false,1
+1105,HO Azure,#1591CB,false,1
+1107,HO Cyan,#5B98B3,false,1
+1108,HO Dark Aqua,#A7DCCF,false,1
+1112,HO Dark Lime,#B2B955,false,1
+1114,HO Dark Sand Green,#627A62,false,1
+1115,HO Dark Turquoise,#10929D,false,1
+1117,HO Gold,#B4A774,false,1
+1118,HO Light Aqua,#A3D1C0,false,1
+1119,HO Light Brown,#965336,false,1
+1122,HO Light Yellow,#F5FAB7,false,1
+1127,HO Metallic Green,#879867,false,1
+1128,HO Metallic Sand Blue,#5F7D8C,false,1
+1130,HO Rose,#D06262,false,1
+1134,HO Titanium,#616161,false,1
+1080,Light Tan,#F3C988,false,1
+1044,Modulex Foil Dark Blue,#0057A6,false,1
+1040,Modulex Foil Dark Gray,#595D60,false,1
+1042,Modulex Foil Dark Green,#006400,false,1
+1045,Modulex Foil Light Blue,#68AECE,false,1
+1041,Modulex Foil Light Gray,#9C9C9C,false,1
+1043,Modulex Foil Light Green,#7DB538,false,1
+1049,Modulex Foil Orange,#F7AD63,false,1
+1047,Modulex Foil Red,#8B0000,false,1
+1046,Modulex Foil Violet,#4B0082,false,1
+1048,Modulex Foil Yellow,#FED557,false,1
+1096,Glitter Trans-Bright Green,#D9E4A7,true,0
+32,Trans-Black IR Lens,#635F52,true,0

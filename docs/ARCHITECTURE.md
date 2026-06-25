@@ -2,24 +2,27 @@
 
 ## Design goals
 
-Brick Keeper is designed for static hosting, low startup cost and simple
-community contributions. It uses browser standards only: HTML, CSS, ES modules,
-the Dialog API, File System Access API, IndexedDB, `localStorage`, Blob
-downloads and File input.
+Brick Keeper uses a Tauri 2 desktop shell backed by SQLite. The shared frontend
+still uses HTML, CSS and ES modules, while durable storage and reference lookup
+are exposed through narrow Tauri commands.
 
 ## Runtime flow
 
 1. `index.html` loads `js/app.js` as an ES module.
 2. The app selects a saved language or defaults to English.
-3. `file-storage.js` restores a previously selected JSON file handle.
-4. If file permission is active, the JSON file becomes the primary data source.
-5. Otherwise `storage.js` checks the fallback copy in `localStorage`.
-6. If no fallback exists, `data/bricks.json` is fetched and persisted.
-7. The UI is rendered from the in-memory `state` object.
-8. Mutations update the local fallback and are queued for ordered file writes.
-9. The app requests persistent storage where the browser supports it.
-10. A service worker caches the versioned application shell for offline use.
-11. A waiting service worker is activated only from the in-app update prompt.
+3. In Tauri, Rust opens `brick-keeper.sqlite3`, applies the schema and imports
+   bundled CSV seed files when the reference version changes.
+4. `sql-storage.js` loads colors, inventory, part lookup, set lookup, set parts
+   and catalog photos through SQLite commands.
+5. If SQLite inventory is empty, the app can still migrate data from JSON/local
+   fallback.
+6. Otherwise `storage.js` checks the fallback copy in `localStorage`.
+7. If no fallback exists, `data/bricks.json` is fetched and persisted into SQL.
+8. The UI is rendered from the in-memory `state` object.
+9. Mutations update the local fallback and are queued for ordered SQL writes.
+10. The app requests persistent storage where the browser supports it.
+11. A service worker caches the versioned application shell for offline use.
+12. A waiting service worker is activated only from the in-app update prompt.
 
 ## Modules
 
@@ -31,7 +34,8 @@ This prevents listener count from growing with the collection.
 
 ### `js/storage.js`
 
-Defines the persistence boundary. Data is stored in a versioned envelope:
+Defines the portable import/export boundary. JSON data is stored in a versioned
+envelope:
 
 ```json
 {
@@ -49,10 +53,32 @@ before increasing `CURRENT_SCHEMA_VERSION`.
 
 ### `js/file-storage.js`
 
-Wraps the File System Access API and stores the user-approved file handle in
-IndexedDB. The app never receives access to other files or directories. File
-writes are serialized in `app.js` so rapid quantity changes cannot race and
-overwrite newer data with an older snapshot.
+Provides one interface for two storage backends. In a compatible browser it
+wraps the File System Access API and stores the user-approved handle in
+IndexedDB. In Tauri it invokes narrow Rust commands responsible for restoring,
+choosing, validating, reading and writing the selected JSON file. File writes
+are serialized in `app.js` so rapid quantity changes cannot race and overwrite
+newer data with an older snapshot.
+
+### `js/sql-storage.js`
+
+Wraps the Tauri SQLite commands: database status, inventory loading and
+replacement, color loading, part-number search, set search, required set parts
+and catalog-photo lookup. The frontend saves inventory changes to SQLite
+whenever the Tauri bridge is present.
+
+### `src-tauri/`
+
+Contains the Tauri 2 application shell. `src/database.rs` opens
+`brick-keeper.sqlite3`, applies `src-tauri/sql/schema.sql`, imports bundled CSV
+seed files into reference tables and exposes narrow SQL commands. Legacy JSON
+file commands remain for migration and import/export workflows. The frontend is
+copied to `dist/` before release builds, and `withGlobalTauri` provides the small
+`window.__TAURI__.core.invoke` bridge without adding a frontend bundler.
+
+The service worker is disabled inside Tauri because the desktop bundle already
+ships the application shell locally. The same frontend remains a normal PWA
+when served over HTTP.
 
 ### `js/inventory.js`
 
@@ -74,8 +100,16 @@ retained version.
 
 ### `js/set-catalog.js`
 
-Loads the compact set index, sharded inventories and sharded catalog-photo
-lookup. Missing quantities are calculated against canonical part/color keys.
+Uses SQLite in Tauri for set search, set inventories and catalog-photo lookup.
+The compact CSV set index, sharded inventories and sharded photo files remain
+as the static web fallback. Missing quantities are calculated against canonical
+part/color keys.
+
+### `js/csv.js`
+
+Provides the small CSV parser/stringifier used by browser modules and Node data
+builders. Keeping this local avoids a runtime dependency in the static web
+fallback and keeps generated reference seed files readable outside the app.
 
 ### `js/scanner.js`
 
@@ -90,21 +124,22 @@ waiting state, `app.js` displays the localized update banner. The worker is
 activated only after receiving the `SKIP_WAITING` message, then
 `controllerchange` reloads the page once.
 
-### `data/catalog/*.json`
+### `data/catalog/*.csv`
 
-Read-only part metadata generated from the CSV database. Files are grouped by
-the first normalized character of `part_num`. A lookup for `3001`, for example,
-requests `data/catalog/3.json`.
+Generated part metadata used as the seed source for SQL imports and as the web
+fallback. Files are grouped by the first normalized character of `part_num`. In
+the static web build, a lookup for `3001` requests `data/catalog/3.csv`.
 
 Set inventories use 10,000-ID groups, and photo references use the first
-normalized part-number character. This reduces the reference database from
-2,273 files to 76 grouped files plus the set index, without a runtime dependency.
+normalized part-number character. This keeps the seed/fallback file count small
+without adding a browser runtime dependency.
 
-### `data/colors.json`
+### `data/colors.csv`
 
 Compact records generated from `BrickKeeper_DB/colors.csv`. Each record stores
 the stable color ID, official name, RGB value, transparency flag and popularity
-count. The UI resolves legacy color keys to these IDs at runtime.
+count. Tauri imports these records into SQLite; the static web build reads the
+CSV directly. The UI resolves legacy color keys to these IDs at runtime.
 
 ## Item schema
 
@@ -114,7 +149,7 @@ count. The UI resolves legacy color keys to these IDs at runtime.
 | `name` | string | yes | Human-readable part name |
 | `partNumber` | string | yes | Manufacturer/catalog number |
 | `category` | string | yes | Key listed in `CATEGORY_KEYS` |
-| `color` | string | yes | Stable ID from `data/colors.json` or a supported legacy key |
+| `color` | string | yes | Stable ID from `data/colors.csv` or a supported legacy key |
 | `quantity` | integer | yes | Number greater than or equal to zero |
 | `location` | string | no | Physical storage location |
 | `year` | integer/null | no | Release or production year |
@@ -157,14 +192,16 @@ record and merges it into the existing target.
 - only catalog and set images are requested from Rebrickable's CDN;
 - fallback data and remembered file handles are scoped to the browser origin;
 - direct writes are limited to a file explicitly selected by the user;
+- the Tauri frontend does not receive a general-purpose filesystem API;
 - export requires an explicit user action.
 
 ## Automated validation
 
 GitHub Actions runs syntax checks, pure inventory tests, schema migration tests,
-full JSON parsing and record-count checks for generated catalogs. A Playwright
-smoke test then loads the English interface in Chromium, searches part `3001`
-and verifies set `75192`.
+file-adapter tests, SQL-adapter tests, full CSV/JSON parsing and record-count
+checks for generated catalogs. A Playwright smoke test then loads the English interface in Chromium,
+opens the visible suggestions for `300`, selects part `3001` and verifies set
+`75192`.
 
 The only `innerHTML` assignment is for trusted, developer-owned translation
 strings containing the hero line break.
@@ -182,10 +219,11 @@ For collections beyond several thousand visible records:
 3. move filtering to a Web Worker only if profiling proves it necessary;
 4. consider IndexedDB if records or attachments outgrow `localStorage`.
 
-Photos currently remain in JSON as data URLs to preserve simple import/export
-and static hosting. If image-heavy collections become a primary use case,
-moving binary images to IndexedDB while keeping metadata in JSON is the correct
-next storage migration.
+Photos currently remain as data URLs in the SQLite `inventory_items.image`
+column and in exported JSON to preserve simple import/export. If image-heavy
+collections become a primary use case, moving binary images to separate files or
+SQLite BLOBs while keeping metadata in rows is the correct next storage
+migration for Tauri.
 
 The remaining measures are intentionally deferred until profiling shows that
 they improve real collections enough to justify their additional complexity.

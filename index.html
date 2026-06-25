@@ -275,23 +275,34 @@
             <span data-i18n="name">Name</span>
             <input id="brick-name" name="name" type="text" maxlength="80" required>
           </label>
-          <label class="field">
-            <span data-i18n="partNumber">Part number</span>
-            <div class="input-action">
-            <input
-              id="brick-part-number"
-              name="partNumber"
-              type="text"
-              maxlength="30"
-              list="part-catalog-suggestions"
-              autocomplete="off"
-              required
-            >
-            <button class="button button-secondary scan-part-button" type="button" data-i18n="scan">Scan</button>
+          <div class="field">
+            <label for="brick-part-number" data-i18n="partNumber">Part number</label>
+            <div class="part-search-control">
+              <div class="input-action">
+                <input
+                  id="brick-part-number"
+                  name="partNumber"
+                  type="text"
+                  maxlength="30"
+                  autocomplete="off"
+                  role="combobox"
+                  aria-autocomplete="list"
+                  aria-controls="part-catalog-suggestions"
+                  aria-expanded="false"
+                  aria-haspopup="listbox"
+                  required
+                >
+                <button class="button button-secondary scan-part-button" type="button" data-i18n="scan">Scan</button>
+              </div>
+              <div
+                class="catalog-suggestions"
+                id="part-catalog-suggestions"
+                role="listbox"
+                hidden
+              ></div>
             </div>
-            <datalist id="part-catalog-suggestions"></datalist>
             <small class="catalog-status" id="catalog-status" aria-live="polite"></small>
-          </label>
+          </div>
           <label class="field">
             <span data-i18n="quantity">Quantity</span>
             <input id="brick-quantity" name="quantity" type="number" min="0" max="99999" value="1" required>

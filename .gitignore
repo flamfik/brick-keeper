@@ -5,5 +5,8 @@ Thumbs.db
 *.log
 .cache/
 node_modules/
+dist/
+.npm-cache/
+src-tauri/target/
 playwright-report/
 test-results/

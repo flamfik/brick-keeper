@@ -1,5 +1,6 @@
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, readdirSync, unlinkSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { stringifyCsvRows } from "../js/csv.js";
 
 const sourceDirectory = resolve(process.argv[2] ?? ".cache/brick-db");
 const outputDirectory = resolve(process.argv[3] ?? "data/catalog");
@@ -78,18 +79,25 @@ for (const line of partLines.slice(1)) {
 }
 
 mkdirSync(outputDirectory, { recursive: true });
-
-for (const [shard, records] of shards) {
-  writeFileSync(join(outputDirectory, `${shard}.json`), JSON.stringify(records));
+for (const file of readdirSync(outputDirectory).filter((name) => name.endsWith(".csv"))) {
+  unlinkSync(join(outputDirectory, file));
 }
 
-writeFileSync(join(outputDirectory, "manifest.json"), JSON.stringify({
-  schemaVersion: 1,
-  generatedAt: new Date().toISOString(),
-  source: "BrickKeeper_DB/parts.csv",
-  totalParts,
-  shardStrategy: "first-character",
-  shards: [...shards.keys()].sort()
-}, null, 2));
+for (const [shard, records] of shards) {
+  writeFileSync(join(outputDirectory, `${shard}.csv`), stringifyCsvRows([
+    ["partNumber", "name", "category", "sourceCategory", "material"],
+    ...records
+  ]));
+}
+
+writeFileSync(join(outputDirectory, "manifest.csv"), stringifyCsvRows([
+  ["key", "value"],
+  ["schemaVersion", "1"],
+  ["generatedAt", new Date().toISOString()],
+  ["source", "BrickKeeper_DB/parts.csv"],
+  ["totalParts", totalParts],
+  ["shardStrategy", "first-character"],
+  ["shards", [...shards.keys()].sort().join(" ")]
+]));
 
 console.log(`Built ${shards.size} shards with ${totalParts} parts.`);
