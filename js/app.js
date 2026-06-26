@@ -24,6 +24,12 @@ import {
   serializeInventory
 } from "./storage.js?v=1.0b";
 import {
+  configureMysqlDatabase,
+  getMysqlStatus,
+  loadMysqlInventory,
+  replaceMysqlInventory
+} from "./mysql-storage.js?v=1.0b";
+import {
   loadSqlColors,
   loadSqlInventory,
   replaceSqlInventory,
@@ -91,6 +97,8 @@ let filePermissionState = "unavailable";
 let fileSaveQueue = Promise.resolve();
 let sqlStorageEnabled = false;
 let sqlSaveQueue = Promise.resolve();
+let mysqlStorageEnabled = false;
+let mysqlSaveQueue = Promise.resolve();
 let colorRecords = FALLBACK_COLORS;
 let colorById = new Map(colorRecords.map((record) => [record[0], record]));
 const catalogCache = new Map();
@@ -115,6 +123,7 @@ const elements = {
   importButton: document.querySelector("#import-button"),
   exportButton: document.querySelector("#export-button"),
   connectFileButton: document.querySelector("#connect-file-button"),
+  databaseButton: document.querySelector("#database-button"),
   setsButton: document.querySelector("#sets-button"),
   backupsButton: document.querySelector("#backups-button"),
   undoButton: document.querySelector("#undo-button"),
@@ -134,6 +143,16 @@ const elements = {
   catalogSuggestions: document.querySelector("#part-catalog-suggestions"),
   catalogStatus: document.querySelector("#catalog-status"),
   confirmDialog: document.querySelector("#confirm-dialog"),
+  databaseDialog: document.querySelector("#database-dialog"),
+  databaseForm: document.querySelector("#database-form"),
+  databaseStatus: document.querySelector("#database-status"),
+  databaseSave: document.querySelector("#database-save"),
+  databaseHost: document.querySelector("#database-host"),
+  databasePort: document.querySelector("#database-port"),
+  databaseName: document.querySelector("#database-name"),
+  databaseUser: document.querySelector("#database-user"),
+  databasePassword: document.querySelector("#database-password"),
+  databaseCreate: document.querySelector("#database-create"),
   toast: document.querySelector("#toast"),
   updateBanner: document.querySelector("#update-banner"),
   updateButton: document.querySelector("#update-button"),
@@ -167,7 +186,8 @@ async function initialize() {
   await loadColorCatalog();
 
   const loadedFromSql = await restoreSqlDatabase();
-  const loadedFromFile = loadedFromSql ? true : await restoreConnectedFile();
+  const loadedFromMysql = loadedFromSql ? false : await restoreMysqlDatabase();
+  const loadedFromFile = loadedFromSql || loadedFromMysql ? true : await restoreConnectedFile();
   if (!loadedFromFile) {
     const storedItems = loadStoredInventory();
     if (storedItems !== null) {
@@ -187,6 +207,8 @@ async function initialize() {
   }
   if (sqlStorageEnabled && !loadedFromSql) {
     queueSqlSave(state.items);
+  } else if (mysqlStorageEnabled && !loadedFromMysql) {
+    queueMysqlSave(state.items);
   }
 
   updateFileStorageUi();
@@ -251,6 +273,32 @@ async function restoreSqlDatabase() {
   } catch (error) {
     console.error("SQLite inventory loading failed:", error);
     sqlStorageEnabled = false;
+    return false;
+  }
+}
+
+async function restoreMysqlDatabase() {
+  if (isTauriRuntime()) return false;
+
+  try {
+    const status = await getMysqlStatus();
+    if (!status.configured || !status.connected || !status.schemaReady) {
+      return false;
+    }
+
+    mysqlStorageEnabled = true;
+    const items = await loadMysqlInventory();
+    if (!items.length) return false;
+    const data = migrateInventory({
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+      appVersion: "1.0b",
+      items
+    });
+    state.items = data.items;
+    saveLocalMirror(state.items);
+    return true;
+  } catch {
+    mysqlStorageEnabled = false;
     return false;
   }
 }
@@ -378,6 +426,11 @@ function bindEvents() {
   elements.fileInput.addEventListener("change", importInventory);
   elements.exportButton.addEventListener("click", exportInventory);
   elements.connectFileButton.addEventListener("click", connectInventoryFile);
+  elements.databaseButton.addEventListener("click", openDatabaseDialog);
+  elements.databaseForm.addEventListener("submit", saveDatabaseConfiguration);
+  document.querySelectorAll(".close-database-button").forEach((button) => {
+    button.addEventListener("click", () => elements.databaseDialog.close());
+  });
   elements.setsButton.addEventListener("click", openSetsDialog);
   elements.backupsButton.addEventListener("click", openBackupsDialog);
   elements.undoButton.addEventListener("click", undoLastChange);
@@ -436,12 +489,15 @@ function updateFileStorageUi() {
   if (!elements.fileStatus) return;
 
   const connected = filePermissionState === "granted" && inventoryFileHandle;
-  elements.connectFileButton.disabled = filePermissionState === "unavailable" && !sqlStorageEnabled;
+  elements.connectFileButton.disabled = filePermissionState === "unavailable" && !sqlStorageEnabled && !mysqlStorageEnabled;
   elements.connectFileButton.querySelector("span").textContent = t(connected ? "changeFile" : "connectFile");
   elements.fileStatus.classList.toggle("is-connected", Boolean(connected));
 
   if (sqlStorageEnabled) {
     elements.fileStatus.textContent = t("databaseConnected");
+    elements.fileStatus.classList.add("is-connected");
+  } else if (mysqlStorageEnabled) {
+    elements.fileStatus.textContent = t("mysqlDatabaseConnected");
     elements.fileStatus.classList.add("is-connected");
   } else if (connected) {
     elements.fileStatus.textContent = t("fileConnected", { name: inventoryFileHandle.name });
@@ -454,6 +510,85 @@ function updateFileStorageUi() {
   } else {
     elements.fileStatus.textContent = t("fileDisconnected");
   }
+}
+
+async function openDatabaseDialog() {
+  setDatabaseStatus(t("databaseChecking"));
+  elements.databaseDialog.showModal();
+
+  try {
+    const status = await getMysqlStatus();
+    if (status.config) {
+      elements.databaseHost.value = status.config.host ?? "127.0.0.1";
+      elements.databasePort.value = status.config.port ?? 3306;
+      elements.databaseName.value = status.config.database ?? "brick_keeper";
+      elements.databaseUser.value = status.config.username ?? "root";
+    }
+    setDatabaseStatus(
+      status.connected && status.schemaReady
+        ? t("databaseConfigured")
+        : t(status.configured ? "databaseConnectionFailed" : "databaseNotConfigured"),
+      status.connected && status.schemaReady ? "connected" : "error"
+    );
+  } catch (error) {
+    console.error("MySQL status check failed:", error);
+    setDatabaseStatus(t("databaseApiUnavailable"), "error");
+  }
+}
+
+async function saveDatabaseConfiguration(event) {
+  event.preventDefault();
+  if (!elements.databaseForm.reportValidity()) return;
+
+  const form = new FormData(elements.databaseForm);
+  const config = {
+    host: String(form.get("host")).trim(),
+    port: Number.parseInt(form.get("port"), 10),
+    database: String(form.get("database")).trim(),
+    username: String(form.get("username")).trim(),
+    password: String(form.get("password") ?? ""),
+    createDatabase: elements.databaseCreate.checked
+  };
+
+  elements.databaseSave.disabled = true;
+  setDatabaseStatus(t("databaseSaving"));
+  try {
+    const status = await configureMysqlDatabase(config);
+    if (!status.connected || !status.schemaReady) {
+      throw new Error(status.error ?? "Database schema is not ready.");
+    }
+
+    mysqlStorageEnabled = true;
+    sqlStorageEnabled = false;
+    const items = await loadMysqlInventory();
+    if (items.length) {
+      state.items = migrateInventory({
+        schemaVersion: CURRENT_SCHEMA_VERSION,
+        appVersion: "1.0b",
+        items
+      }).items;
+      saveLocalMirror(state.items);
+      rebuildFilterOptions();
+      render();
+    } else {
+      queueMysqlSave(state.items);
+    }
+    updateFileStorageUi();
+    setDatabaseStatus(t("databaseConfigured"), "connected");
+    showToast(t("databaseConnectedToast"));
+  } catch (error) {
+    console.error("MySQL configuration failed:", error);
+    setDatabaseStatus(error.message || t("databaseConnectionFailed"), "error");
+    showToast(t("databaseConnectionFailed"));
+  } finally {
+    elements.databaseSave.disabled = false;
+  }
+}
+
+function setDatabaseStatus(message, stateName = "") {
+  elements.databaseStatus.textContent = message;
+  elements.databaseStatus.classList.toggle("is-connected", stateName === "connected");
+  elements.databaseStatus.classList.toggle("is-error", stateName === "error");
 }
 
 /**
@@ -1161,6 +1296,11 @@ function queueFileSave(items) {
     return;
   }
 
+  if (mysqlStorageEnabled) {
+    queueMysqlSave(items);
+    return;
+  }
+
   if (filePermissionState !== "granted" || !inventoryFileHandle) return;
 
   const handle = inventoryFileHandle;
@@ -1173,6 +1313,17 @@ function queueFileSave(items) {
       filePermissionState = "error";
       updateFileStorageUi();
       showToast(t("fileError"));
+    });
+}
+
+function queueMysqlSave(items) {
+  const snapshot = items.map((item) => ({ ...item }));
+  mysqlSaveQueue = mysqlSaveQueue
+    .catch(() => undefined)
+    .then(() => replaceMysqlInventory(snapshot))
+    .catch((error) => {
+      console.error("MySQL inventory saving failed:", error);
+      showToast(t("storageError"));
     });
 }
 

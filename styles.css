@@ -808,6 +808,12 @@ dialog::backdrop {
   font-size: 40px;
 }
 
+.dialog-copy {
+  margin: -12px 0 20px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
 .form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -825,6 +831,18 @@ dialog::backdrop {
   grid-column: 1 / -1;
 }
 
+.checkbox-field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.checkbox-field input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+}
+
 .field input,
 .field select,
 .field textarea {
@@ -835,6 +853,22 @@ dialog::backdrop {
   color: var(--ink);
   background: white;
   resize: vertical;
+}
+
+.database-status {
+  min-height: 1.4em;
+  margin: 14px 0 0;
+  color: var(--muted);
+}
+
+.database-status.is-connected {
+  color: var(--green);
+  font-weight: 800;
+}
+
+.database-status.is-error {
+  color: var(--red);
+  font-weight: 800;
 }
 
 .input-action {

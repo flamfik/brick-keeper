@@ -9,6 +9,7 @@ const APP_SHELL = [
   "./js/file-storage.js?v=1.0b",
   "./js/i18n.js?v=1.0b",
   "./js/inventory.js?v=1.0b",
+  "./js/mysql-storage.js?v=1.0b",
   "./js/scanner.js?v=1.0b",
   "./js/set-catalog.js?v=1.0b",
   "./js/sql-storage.js?v=1.0b",
@@ -43,6 +44,7 @@ self.addEventListener("fetch", (event) => {
   const { request } = event;
   const url = new URL(request.url);
   if (request.method !== "GET" || url.origin !== self.location.origin) return;
+  if (url.pathname.includes("/api/")) return;
 
   if (request.mode === "navigate") {
     event.respondWith(

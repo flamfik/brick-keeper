@@ -138,6 +138,9 @@
               <svg class="icon"><use href="#icon-box"></use></svg>
               <span data-i18n="connectFile">Connect file</span>
             </button>
+            <button class="button button-secondary" id="database-button" type="button">
+              <span data-i18n="database">Database</span>
+            </button>
             <button class="button button-secondary" id="sets-button" type="button">
               <span data-i18n="sets">Sets</span>
             </button>
@@ -369,6 +372,58 @@
         <p data-i18n="backupsHint">The latest 20 collection versions.</p>
         <div id="backups-list" class="backups-list"></div>
       </div>
+    </dialog>
+
+    <dialog id="database-dialog" aria-labelledby="database-title">
+      <form class="dialog-panel" id="database-form">
+        <div class="dialog-heading">
+          <div>
+            <p class="eyebrow" data-i18n="databaseEyebrow">Local server database</p>
+            <h2 id="database-title" data-i18n="databaseTitle">MySQL / MariaDB</h2>
+          </div>
+          <button class="icon-button close-database-button" type="button" aria-label="Close">
+            <svg class="icon"><use href="#icon-close"></use></svg>
+          </button>
+        </div>
+        <p class="dialog-copy" data-i18n="databaseHint">
+          Use this only with a local WAMP server. The browser talks to PHP, and PHP talks to MySQL.
+        </p>
+        <div class="form-grid">
+          <label class="field">
+            <span data-i18n="databaseHost">Host</span>
+            <input id="database-host" name="host" type="text" value="127.0.0.1" required>
+          </label>
+          <label class="field">
+            <span data-i18n="databasePort">Port</span>
+            <input id="database-port" name="port" type="number" min="1" max="65535" value="3306" required>
+          </label>
+          <label class="field">
+            <span data-i18n="databaseName">Database name</span>
+            <input id="database-name" name="database" type="text" value="brick_keeper" pattern="[A-Za-z0-9_]+" required>
+          </label>
+          <label class="field">
+            <span data-i18n="databaseUser">User</span>
+            <input id="database-user" name="username" type="text" value="root" required>
+          </label>
+          <label class="field field-wide">
+            <span data-i18n="databasePassword">Password</span>
+            <input id="database-password" name="password" type="password" autocomplete="current-password">
+          </label>
+          <label class="checkbox-field field-wide">
+            <input id="database-create" name="createDatabase" type="checkbox" checked>
+            <span data-i18n="databaseCreate">Create database and tables if missing</span>
+          </label>
+        </div>
+        <p class="database-status" id="database-status" aria-live="polite"></p>
+        <div class="dialog-actions">
+          <button class="button button-secondary close-database-button" type="button" data-i18n="cancel">
+            Cancel
+          </button>
+          <button class="button button-primary" id="database-save" type="submit" data-i18n="databaseSave">
+            Save and connect
+          </button>
+        </div>
+      </form>
     </dialog>
 
     <dialog class="scanner-dialog" id="scanner-dialog" aria-labelledby="scanner-title">

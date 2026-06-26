@@ -72,7 +72,12 @@ const index = readText("index.html");
 const app = readText("js/app.js");
 const setCatalog = readText("js/set-catalog.js");
 const sqlStorage = readText("js/sql-storage.js");
+const mysqlStorage = readText("js/mysql-storage.js");
 const worker = readText("service-worker.js");
+const gitignore = readText(".gitignore");
+const mysqlApi = readText("api/database.php");
+const mysqlInventoryApi = readText("api/inventory.php");
+const mysqlSchema = readText("api/schema/mysql.sql");
 const tauriConfig = readJson("src-tauri/tauri.conf.json");
 const tauriSource = readText("src-tauri/src/lib.rs");
 const tauriDatabase = readText("src-tauri/src/database.rs");
@@ -82,13 +87,28 @@ assert.ok(index.includes(`styles.css?${expectedToken}`));
 assert.ok(index.includes(`js/app.js?${expectedToken}`));
 assert.ok(index.includes(`v${APP_VERSION}`));
 assert.ok(index.includes('id="part-catalog-suggestions"'));
+assert.ok(index.includes('id="database-dialog"'), "Database configurator dialog is missing.");
+assert.ok(index.includes('id="database-form"'), "Database configurator form is missing.");
 assert.ok(app.includes(`service-worker.js?${expectedToken}`));
 assert.ok(app.includes(`data/colors.csv?${expectedToken}`));
+assert.ok(app.includes("restoreMysqlDatabase"), "MySQL restore flow is not wired.");
+assert.ok(app.includes("configureMysqlDatabase"), "MySQL database configurator is not wired.");
 assert.ok(app.includes("searchSqlParts"), "Part catalog lookup is not wired to SQLite.");
 assert.ok(setCatalog.includes("searchSqlSets"), "Set search is not wired to SQLite.");
 assert.ok(setCatalog.includes("loadSqlSetParts"), "Set inventories are not wired to SQLite.");
 assert.ok(setCatalog.includes("findSqlCatalogPhoto"), "Catalog photos are not wired to SQLite.");
 assert.ok(worker.includes(`brick-keeper-v${APP_VERSION}`));
+assert.ok(worker.includes(`js/mysql-storage.js?${expectedToken}`));
+assert.ok(worker.includes('url.pathname.includes("/api/")'), "Service worker must not cache PHP API calls.");
+assert.ok(mysqlStorage.includes("database.php?action=status"), "MySQL status endpoint is not wired.");
+assert.ok(mysqlStorage.includes("database.php?action=configure"), "MySQL config endpoint is not wired.");
+assert.ok(mysqlStorage.includes("inventory.php"), "MySQL inventory endpoint is not wired.");
+assert.ok(mysqlApi.includes("bk_assert_private_network_request"), "MySQL status API must allow private LAN checks.");
+assert.ok(mysqlApi.includes("bk_assert_local_request"), "MySQL configuration API must remain localhost-only.");
+assert.ok(mysqlInventoryApi.includes("bk_assert_private_network_request"), "MySQL inventory API must allow private LAN use.");
+assert.ok(mysqlApi.includes("bk_apply_schema"), "MySQL config API cannot initialize schema.");
+assert.ok(mysqlInventoryApi.includes("inventory_items"), "MySQL inventory API is missing inventory table operations.");
+assert.ok(gitignore.includes("api/config/database.local.php"), "Local MySQL credentials must be ignored.");
 assert.equal(tauriConfig.app.withGlobalTauri, true);
 assert.equal(tauriConfig.build.frontendDist, "../dist");
 for (const command of [
@@ -110,6 +130,7 @@ for (const command of [
 }
 for (const table of ["inventory_items", "colors", "parts", "sets", "set_parts", "catalog_photos"]) {
   assert.ok(sqlSchema.includes(`CREATE TABLE IF NOT EXISTS ${table}`), `Missing SQL table: ${table}`);
+  assert.ok(mysqlSchema.includes(`CREATE TABLE IF NOT EXISTS ${table}`), `Missing MySQL table: ${table}`);
 }
 assert.ok(tauriDatabase.includes("rusqlite"), "SQLite backend is not wired.");
 assert.ok(tauriDatabase.includes("csv::Reader"), "Reference CSV import is not wired to SQLite.");

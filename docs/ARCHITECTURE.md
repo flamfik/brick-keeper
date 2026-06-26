@@ -4,7 +4,8 @@
 
 Brick Keeper uses a Tauri 2 desktop shell backed by SQLite. The shared frontend
 still uses HTML, CSS and ES modules, while durable storage and reference lookup
-are exposed through narrow Tauri commands.
+are exposed through narrow Tauri commands. A browser build served by WAMP can
+optionally store the active inventory in MySQL/MariaDB through a local PHP API.
 
 ## Runtime flow
 
@@ -14,15 +15,17 @@ are exposed through narrow Tauri commands.
    bundled CSV seed files when the reference version changes.
 4. `sql-storage.js` loads colors, inventory, part lookup, set lookup, set parts
    and catalog photos through SQLite commands.
-5. If SQLite inventory is empty, the app can still migrate data from JSON/local
+5. Outside Tauri, `mysql-storage.js` probes the local WAMP PHP API and uses
+   MySQL/MariaDB when it is configured and reachable.
+6. If SQL inventory is empty, the app can still migrate data from JSON/local
    fallback.
-6. Otherwise `storage.js` checks the fallback copy in `localStorage`.
-7. If no fallback exists, `data/bricks.json` is fetched and persisted into SQL.
-8. The UI is rendered from the in-memory `state` object.
-9. Mutations update the local fallback and are queued for ordered SQL writes.
-10. The app requests persistent storage where the browser supports it.
-11. A service worker caches the versioned application shell for offline use.
-12. A waiting service worker is activated only from the in-app update prompt.
+7. Otherwise `storage.js` checks the fallback copy in `localStorage`.
+8. If no fallback exists, `data/bricks.json` is fetched and persisted into SQL.
+9. The UI is rendered from the in-memory `state` object.
+10. Mutations update the local fallback and are queued for ordered SQL writes.
+11. The app requests persistent storage where the browser supports it.
+12. A service worker caches the versioned application shell for offline use.
+13. A waiting service worker is activated only from the in-app update prompt.
 
 ## Modules
 
@@ -67,6 +70,14 @@ replacement, color loading, part-number search, set search, required set parts
 and catalog-photo lookup. The frontend saves inventory changes to SQLite
 whenever the Tauri bridge is present.
 
+### `js/mysql-storage.js`
+
+Wraps the optional WAMP/PHP API used by the browser build. The browser never
+opens a direct MySQL connection. It calls `api/database.php` for configuration
+and schema initialization, then `api/inventory.php` for inventory load/replace
+operations. This mode is ignored in Tauri, where SQLite remains the native
+stand-alone backend.
+
 ### `src-tauri/`
 
 Contains the Tauri 2 application shell. `src/database.rs` opens
@@ -79,6 +90,20 @@ copied to `dist/` before release builds, and `withGlobalTauri` provides the smal
 The service worker is disabled inside Tauri because the desktop bundle already
 ships the application shell locally. The same frontend remains a normal PWA
 when served over HTTP.
+
+### `api/`
+
+Contains the optional PHP bridge for WAMP. `database.php` accepts status checks
+from private LAN clients, but configuration requests remain localhost-only. It
+can create the configured MySQL/MariaDB database and applies
+`api/schema/mysql.sql`. `inventory.php` loads and replaces the active inventory
+inside a transaction and is available to localhost/private LAN clients. Runtime
+credentials are written to `api/config/database.local.php`, which is ignored by
+Git.
+
+This API is intentionally local-first. It is not an authentication layer and
+should not be exposed as a public internet service. LAN devices reach the app
+through WAMP/Apache; MySQL itself stays bound to the WAMP computer.
 
 ### `js/inventory.js`
 
@@ -187,6 +212,9 @@ record and merges it into the existing target.
 
 - user-provided text is assigned with `textContent`, not `innerHTML`;
 - imported JSON is parsed and structurally validated;
+- the MySQL/PHP configurator is restricted to localhost requests;
+- the MySQL/PHP inventory API is limited to localhost and private LAN clients;
+- database passwords are stored only in ignored local PHP config;
 - uploaded images are decoded and resized locally; they are never sent to a server;
 - the application has no authentication or analytics;
 - only catalog and set images are requested from Rebrickable's CDN;
@@ -198,8 +226,8 @@ record and merges it into the existing target.
 ## Automated validation
 
 GitHub Actions runs syntax checks, pure inventory tests, schema migration tests,
-file-adapter tests, SQL-adapter tests, full CSV/JSON parsing and record-count
-checks for generated catalogs. A Playwright smoke test then loads the English interface in Chromium,
+file-adapter tests, SQL-adapter tests, MySQL-adapter tests, full CSV/JSON
+parsing and record-count checks for generated catalogs. A Playwright smoke test then loads the English interface in Chromium,
 opens the visible suggestions for `300`, selects part `3001` and verifies set
 `75192`.
 

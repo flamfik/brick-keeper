@@ -7,6 +7,8 @@ Thumbs.db
 node_modules/
 dist/
 .npm-cache/
+.mysql-import/
 src-tauri/target/
 playwright-report/
 test-results/
+api/config/database.local.php

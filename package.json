@@ -6,10 +6,11 @@
   "scripts": {
     "start": "node tools/server.mjs",
     "build:tauri-assets": "node tools/build-tauri.mjs",
+    "build:mysql-csv": "node tools/combine-mysql-csv.mjs",
     "build:set-catalog": "node tools/build-set-catalog.mjs",
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",
-    "test": "node tools/test-inventory.mjs && node tools/test-storage.mjs && node tools/test-file-storage.mjs && node tools/test-sql-storage.mjs && node tools/validate-project.mjs",
+    "test": "node tools/test-inventory.mjs && node tools/test-storage.mjs && node tools/test-file-storage.mjs && node tools/test-sql-storage.mjs && node tools/test-mysql-storage.mjs && node tools/validate-project.mjs",
     "test:e2e": "playwright test"
   },
   "devDependencies": {

@@ -27,6 +27,7 @@ on the user's computer.
 - an in-app prompt when a new PWA version is ready;
 - import and export using a documented JSON migration format;
 - SQLite persistence and reference lookup in the Tauri 2 desktop shell;
+- optional WAMP/PHP bridge for MySQL or MariaDB inventory storage;
 - local fallback persistence when no file is connected;
 - Polish, English and Spanish interface;
 - responsive, keyboard-friendly interface with no runtime dependencies.
@@ -77,6 +78,10 @@ The repository, tests and raw `BrickKeeper_DB` source files are not shipped.
 |   |-- sets/             # generated CSV source for SQL/reference imports
 |   |-- colors.csv        # generated CSV source for colors
 |   `-- bricks.json       # starter inventory and JSON format example
+|-- api/
+|   |-- database.php      # localhost-only MySQL/MariaDB configuration API
+|   |-- inventory.php     # MySQL/MariaDB inventory API for WAMP
+|   `-- schema/mysql.sql  # MySQL/MariaDB table schema
 |-- docs/
 |   `-- ARCHITECTURE.md   # technical architecture and extension guide
 |-- js/
@@ -85,6 +90,7 @@ The repository, tests and raw `BrickKeeper_DB` source files are not shipped.
 |   |-- file-storage.js   # connected JSON file and remembered permissions
 |   |-- i18n.js           # translations and interpolation
 |   |-- inventory.js      # duplicate identity and merge rules
+|   |-- mysql-storage.js  # WAMP/PHP MySQL adapter
 |   |-- sql-storage.js    # Tauri SQLite command adapter
 |   `-- storage.js        # persistence, validation, import/export
 |-- src-tauri/            # Tauri 2 shell, SQLite schema and native commands
@@ -114,6 +120,51 @@ Direct file access in the web build requires a Chromium-based browser such as
 Chrome or Edge and a secure origin such as HTTPS or `http://localhost`. The
 Tauri build uses native Rust commands and SQLite for persistence.
 
+## WAMP MySQL / MariaDB Mode
+
+The browser build can also store the active inventory in a local WAMP database.
+The browser never connects to MySQL directly. It calls the localhost-only PHP
+API in `api/`, and PHP uses PDO to talk to MySQL or MariaDB.
+
+To use it locally:
+
+1. Copy this project into a WAMP web directory, for example
+   `C:\wamp64\www\brick-keeper-main`.
+2. Start Apache and MySQL/MariaDB in WAMP.
+3. Open `http://localhost/brick-keeper-main/`.
+4. Select **Database** in Brick Keeper.
+5. Use typical WAMP defaults:
+   - host: `127.0.0.1`
+   - port: `3306`
+   - database: `brick_keeper`
+   - user: `root`
+   - password: empty unless you changed it
+6. Keep **Create database and tables if missing** enabled and save.
+
+The generated credentials are written to
+`api/config/database.local.php`, which is ignored by Git. Do not commit that
+file. The PHP API rejects non-local requests, but WAMP should still be used as a
+local development server, not as a public deployment target.
+
+### Local Network Access
+
+After the database is configured on the WAMP computer, other devices on the
+same private network can use the same Brick Keeper inventory through Apache.
+Open the app with the WAMP computer's LAN address, for example:
+
+```text
+http://192.168.1.20/brick-keeper-main/
+```
+
+The PHP API accepts requests only from localhost and private LAN ranges such as
+`192.168.x.x`, `10.x.x.x` and `172.16.x.x` through `172.31.x.x`. Database
+configuration actions remain restricted to the WAMP computer itself. Do not
+expose this WAMP site to the public internet.
+
+If another device cannot open the app, check Windows Firewall and allow inbound
+connections to WAMP/Apache on port `80`. MySQL does not need to be exposed to
+the network; only PHP on the WAMP computer talks to `127.0.0.1:3306`.
+
 Photos are stored as compressed WebP data URLs in the item's optional `image`
 field. This keeps exported JSON self-contained. Browser storage is limited, so
 large photo collections should be exported regularly.
@@ -138,6 +189,11 @@ part-number search, set search, required set parts and catalog-photo lookup.
 Generated CSV files are imported into SQLite during startup when the bundled
 reference version changes. JSON file import/export remains as the human-readable
 migration and backup boundary.
+
+The WAMP mode creates the same table names in MySQL/MariaDB through
+`api/schema/mysql.sql`. The current PHP bridge stores and loads the active
+inventory from `inventory_items`; reference catalogs continue to use the CSV
+fallback in the browser.
 
 ## Reference Sources
 
@@ -232,6 +288,7 @@ newer unsupported schema are rejected instead of being modified.
 - CSS `contain` on cards to limit layout and paint work;
 - system fonts and inline SVG icons;
 - SQLite reference queries in Tauri and CSV reference fallback on the web;
+- optional WAMP/PHP MySQL storage for the active inventory;
 - catalog and set images are the only third-party runtime requests;
 - GitHub Actions syntax, migration, full reference-data and Chromium smoke tests
   on every pull request;
