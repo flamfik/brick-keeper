@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import {
+  findSqlBuildableSets,
   findSqlCatalogPhoto,
   getDatabaseStatus,
   loadSqlColors,
@@ -59,6 +60,16 @@ const runtime = {
             inventoryId: 196945
           }];
         }
+        if (command === "find_buildable_set_records") {
+          return [{
+            setNumber: "001-1",
+            name: "Gears",
+            year: 1965,
+            numParts: 43,
+            imageUrl: "https://example.com/001-1.jpg",
+            inventoryId: 24696
+          }];
+        }
         if (command === "load_sql_set_parts") {
           return [{ partNumber: "3001", color: "4", quantity: 2 }];
         }
@@ -98,6 +109,15 @@ assert.deepEqual(await searchSqlSets("75192", 5, runtime), [[
   "https://example.com/75192.jpg",
   196945
 ]]);
+assert.deepEqual(await findSqlBuildableSets(25, runtime), [[
+  "001-1",
+  "Gears",
+  1965,
+  43,
+  "https://example.com/001-1.jpg",
+  24696
+]]);
+assert.deepEqual(calls.at(-1), ["find_buildable_set_records", { limit: 25 }]);
 assert.deepEqual(await loadSqlSetParts(196945, runtime), [["3001", "4", 2]]);
 assert.deepEqual(calls.at(-1), ["load_sql_set_parts", { inventoryId: 196945 }]);
 assert.equal(await findSqlCatalogPhoto("3001", "4", runtime), "https://example.com/3001.jpg");

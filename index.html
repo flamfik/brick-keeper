@@ -15,9 +15,9 @@
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="icons/app-icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="icons/app-icon-192.png">
-    <link rel="preload" href="styles.css?v=1.0b" as="style">
-    <link rel="stylesheet" href="styles.css?v=1.0b">
-    <script type="module" src="js/app.js?v=1.0b"></script>
+    <link rel="preload" href="styles.css?v=1.0b-grouped-colors" as="style">
+    <link rel="stylesheet" href="styles.css?v=1.0b-grouped-colors">
+    <script type="module" src="js/app.js?v=1.0b-grouped-colors"></script>
   </head>
   <body>
     <a class="skip-link" href="#inventory" data-i18n="skipToInventory">
@@ -50,6 +50,10 @@
       </symbol>
       <symbol id="icon-edit" viewBox="0 0 24 24">
         <path d="m14 5 5 5M4 20l3.5-.7L19 7.8 16.2 5 4.7 16.5 4 20Z"></path>
+      </symbol>
+      <symbol id="icon-copy" viewBox="0 0 24 24">
+        <rect x="8" y="8" width="11" height="11" rx="2"></rect>
+        <path d="M5 15H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1"></path>
       </symbol>
       <symbol id="icon-trash" viewBox="0 0 24 24">
         <path d="M4 7h16M9 7V4h6v3m3 0-1 14H7L6 7m4 4v6m4-6v6"></path>
@@ -356,6 +360,16 @@
             placeholder="Set number or name">
           <button class="button button-secondary scan-set-button" type="button" data-i18n="scan">Scan</button>
         </div>
+        <div class="set-buildable-row">
+          <button class="button button-primary" id="buildable-sets-button" type="button"
+            data-i18n="showBuildableSets">
+            Show buildable sets
+          </button>
+          <p class="set-status" id="buildable-sets-status" aria-live="polite"
+            data-i18n="buildableSetsHint">
+            Find sets that can be built from your current inventory.
+          </p>
+        </div>
         <div id="set-search-results" class="set-search-results"></div>
         <div id="set-details" class="set-details" hidden></div>
       </div>
@@ -472,6 +486,10 @@
               <svg class="icon"><use href="#icon-edit"></use></svg>
               <span class="visually-hidden" data-i18n="edit">Edit</span>
             </button>
+            <button class="icon-button copy-button" type="button">
+              <svg class="icon"><use href="#icon-copy"></use></svg>
+              <span class="visually-hidden" data-i18n="copyBrick">Copy</span>
+            </button>
             <button class="icon-button delete-button" type="button">
               <svg class="icon"><use href="#icon-trash"></use></svg>
               <span class="visually-hidden" data-i18n="delete">Delete</span>
@@ -493,6 +511,10 @@
               <button class="quantity-button increase-button" type="button" aria-label="Increase quantity">+</button>
             </div>
           </div>
+          <button class="variant-toggle" type="button" aria-expanded="false">
+            Show colors
+          </button>
+          <div class="variant-list" hidden></div>
         </div>
       </article>
     </template>

@@ -21,7 +21,7 @@ jobs:
           node-version: 22
 
       - name: Install test tools
-        run: npm install --ignore-scripts --no-package-lock
+        run: npm ci
 
       - name: Check JavaScript syntax
         run: |

@@ -52,6 +52,18 @@ export async function searchSqlSets(query, limit = 20, runtime = globalThis) {
   ]);
 }
 
+export async function findSqlBuildableSets(limit = 50, runtime = globalThis) {
+  const sets = await invoke("find_buildable_set_records", { limit }, runtime);
+  return sets.map(({ setNumber, name, year, numParts, imageUrl, inventoryId }) => [
+    setNumber,
+    name,
+    year,
+    numParts,
+    imageUrl,
+    inventoryId
+  ]);
+}
+
 export async function loadSqlSetParts(inventoryId, runtime = globalThis) {
   const parts = await invoke("load_sql_set_parts", { inventoryId: Number(inventoryId) }, runtime);
   return parts.map(({ partNumber, color, quantity }) => [

@@ -28,7 +28,10 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": ["nsis"],
+    "publisher": "Brick Keeper contributors",
+    "shortDescription": "Standalone LEGO brick collection organizer",
+    "longDescription": "Brick Keeper is a standalone LEGO brick collection organizer with local SQLite storage.",
     "icon": [
       "../icons/app-icon-192.png",
       "../icons/app-icon-512.png"

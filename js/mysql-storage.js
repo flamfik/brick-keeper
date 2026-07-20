@@ -1,6 +1,7 @@
 const STATUS_URL = "./api/database.php?action=status";
 const CONFIGURE_URL = "./api/database.php?action=configure";
 const INVENTORY_URL = "./api/inventory.php";
+const SETS_URL = "./api/sets.php";
 
 async function fetchJson(url, options = {}, runtime = globalThis) {
   if (typeof runtime.fetch !== "function") {
@@ -51,4 +52,21 @@ export async function replaceMysqlInventory(items, runtime = globalThis) {
     method: "PUT",
     body: JSON.stringify({ items })
   }, runtime);
+}
+
+export async function findMysqlBuildableSets(limit = 50, runtime = globalThis) {
+  const payload = await fetchJson(`${SETS_URL}?action=buildable&limit=${encodeURIComponent(limit)}`, {}, runtime);
+  return {
+    referenceReady: Boolean(payload.referenceReady),
+    sets: Array.isArray(payload.sets)
+      ? payload.sets.map(({ setNumber, name, year, numParts, imageUrl, inventoryId }) => [
+        setNumber,
+        name,
+        year === null ? null : Number(year),
+        numParts === null ? null : Number(numParts),
+        imageUrl,
+        Number(inventoryId)
+      ])
+      : []
+  };
 }

@@ -66,6 +66,9 @@ CREATE TABLE IF NOT EXISTS sets (
 CREATE INDEX IF NOT EXISTS idx_sets_search
   ON sets(set_number COLLATE NOCASE, name COLLATE NOCASE);
 
+CREATE INDEX IF NOT EXISTS idx_sets_num_parts
+  ON sets(num_parts);
+
 CREATE TABLE IF NOT EXISTS set_parts (
   inventory_id INTEGER NOT NULL,
   part_number TEXT NOT NULL,

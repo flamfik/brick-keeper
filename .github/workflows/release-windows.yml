@@ -1,0 +1,92 @@
+name: Build Windows Installer
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Optional tag to publish as a GitHub Release, for example v1.0rc"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  windows-installer:
+    name: Windows installer
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Set up Rust
+        shell: pwsh
+        run: |
+          rustup update stable
+          rustup default stable
+          rustc --version
+          cargo --version
+
+      - name: Install JavaScript dependencies
+        run: npm ci
+
+      - name: Run validation tests
+        run: npm test
+
+      - name: Build Tauri Windows installers
+        run: npm run tauri:build
+
+      - name: List generated bundles
+        shell: pwsh
+        run: |
+          Get-ChildItem src-tauri/target/release/bundle -Recurse -File |
+            Select-Object FullName, Length |
+            Format-Table -AutoSize
+
+      - name: Upload installer artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: brick-keeper-windows-installer
+          if-no-files-found: error
+          path: |
+            src-tauri/target/release/bundle/**/*.exe
+            src-tauri/target/release/bundle/**/*.msi
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/') || github.event.inputs.release_tag != ''
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          GITHUB_SHA_VALUE: ${{ github.sha }}
+          MANUAL_RELEASE_TAG: ${{ github.event.inputs.release_tag }}
+        run: |
+          $tag = $env:GITHUB_REF_NAME
+          if ($env:MANUAL_RELEASE_TAG) {
+            $tag = $env:MANUAL_RELEASE_TAG
+          }
+
+          $artifacts = Get-ChildItem src-tauri/target/release/bundle -Recurse -File |
+            Where-Object { $_.Extension -in '.exe', '.msi' }
+          if (-not $artifacts) {
+            throw 'No Windows installer artifacts were generated.'
+          }
+
+          $artifactPaths = $artifacts | ForEach-Object { $_.FullName }
+          if (gh release view $tag 2>$null) {
+            gh release upload $tag $artifactPaths --clobber
+          } else {
+            gh release create $tag $artifactPaths `
+              --target $env:GITHUB_SHA_VALUE `
+              --title "Brick Keeper $tag" `
+              --notes "Windows installer MVP for Brick Keeper. This build uses the standalone Tauri desktop app with local SQLite storage. WAMP/MySQL remains an advanced LAN mode."
+          }

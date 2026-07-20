@@ -42,7 +42,8 @@ CREATE TABLE IF NOT EXISTS sets (
   num_parts INT NULL,
   image_url TEXT NULL,
   inventory_id INT NOT NULL UNIQUE,
-  INDEX idx_sets_search (set_number, name(120))
+  INDEX idx_sets_search (set_number, name(120)),
+  INDEX idx_sets_num_parts (num_parts)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS set_parts (

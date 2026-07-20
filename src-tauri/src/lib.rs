@@ -187,6 +187,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             database::database_status,
+            database::find_buildable_set_records,
             database::find_sql_catalog_photo,
             database::load_color_records,
             database::load_inventory_items,

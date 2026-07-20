@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {
   configureMysqlDatabase,
+  findMysqlBuildableSets,
   getMysqlStatus,
   loadMysqlInventory,
   replaceMysqlInventory
@@ -37,6 +38,20 @@ const runtime = {
     if (url.includes("inventory.php")) {
       return jsonResponse({ ok: true, schemaVersion: 2, items });
     }
+    if (url.includes("sets.php?action=buildable")) {
+      return jsonResponse({
+        ok: true,
+        referenceReady: true,
+        sets: [{
+          setNumber: "001-1",
+          name: "Gears",
+          year: 1965,
+          numParts: 43,
+          imageUrl: "https://example.com/001-1.jpg",
+          inventoryId: 24696
+        }]
+      });
+    }
     return jsonResponse({ ok: false, error: "not found" }, 404);
   }
 };
@@ -65,6 +80,12 @@ await replaceMysqlInventory(items, runtime);
 assert.equal(calls.at(-1)[0], "./api/inventory.php");
 assert.equal(calls.at(-1)[1].method, "PUT");
 assert.deepEqual(JSON.parse(calls.at(-1)[1].body), { items });
+
+assert.deepEqual(await findMysqlBuildableSets(25, runtime), {
+  referenceReady: true,
+  sets: [["001-1", "Gears", 1965, 43, "https://example.com/001-1.jpg", 24696]]
+});
+assert.equal(calls.at(-1)[0], "./api/sets.php?action=buildable&limit=25");
 
 console.log("MySQL storage adapter tests passed.");
 

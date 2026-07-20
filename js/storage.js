@@ -1,4 +1,4 @@
-import { canonicalColorId } from "./inventory.js?v=1.0b";
+import { canonicalColorId } from "./inventory.js?v=1.0b-grouped-colors";
 
 const STORAGE_KEY = "brick-keeper.inventory.v1";
 export const APP_VERSION = "1.0b";

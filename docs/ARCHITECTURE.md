@@ -66,17 +66,18 @@ newer data with an older snapshot.
 ### `js/sql-storage.js`
 
 Wraps the Tauri SQLite commands: database status, inventory loading and
-replacement, color loading, part-number search, set search, required set parts
-and catalog-photo lookup. The frontend saves inventory changes to SQLite
-whenever the Tauri bridge is present.
+replacement, color loading, part-number search, set search, buildable-set
+lookup, required set parts and catalog-photo lookup. The frontend saves
+inventory changes to SQLite whenever the Tauri bridge is present.
 
 ### `js/mysql-storage.js`
 
 Wraps the optional WAMP/PHP API used by the browser build. The browser never
 opens a direct MySQL connection. It calls `api/database.php` for configuration
-and schema initialization, then `api/inventory.php` for inventory load/replace
-operations. This mode is ignored in Tauri, where SQLite remains the native
-stand-alone backend.
+and schema initialization, `api/inventory.php` for inventory load/replace
+operations and `api/sets.php` for buildable-set lookup when MySQL reference
+tables are populated. This mode is ignored in Tauri, where SQLite remains the
+native stand-alone backend.
 
 ### `src-tauri/`
 
@@ -91,15 +92,22 @@ The service worker is disabled inside Tauri because the desktop bundle already
 ships the application shell locally. The same frontend remains a normal PWA
 when served over HTTP.
 
+The public installer path is the Tauri desktop app with bundled SQLite. It is
+built by `.github/workflows/release-windows.yml` and does not require WAMP,
+MySQL or MariaDB on the user's computer. The WAMP/PHP bridge remains an
+advanced browser/LAN deployment mode.
+
 ### `api/`
 
 Contains the optional PHP bridge for WAMP. `database.php` accepts status checks
 from private LAN clients, but configuration requests remain localhost-only. It
 can create the configured MySQL/MariaDB database and applies
 `api/schema/mysql.sql`. `inventory.php` loads and replaces the active inventory
-inside a transaction and is available to localhost/private LAN clients. Runtime
-credentials are written to `api/config/database.local.php`, which is ignored by
-Git.
+inside a transaction and is available to localhost/private LAN clients.
+`sets.php` calculates buildable sets from `inventory_items`, `sets` and
+`set_parts`; if those reference tables are empty, the frontend uses the CSV
+fallback. Runtime credentials are written to
+`api/config/database.local.php`, which is ignored by Git.
 
 This API is intentionally local-first. It is not an authentication layer and
 should not be exposed as a public internet service. LAN devices reach the app
@@ -156,8 +164,10 @@ fallback. Files are grouped by the first normalized character of `part_num`. In
 the static web build, a lookup for `3001` requests `data/catalog/3.csv`.
 
 Set inventories use 10,000-ID groups, and photo references use the first
-normalized part-number character. This keeps the seed/fallback file count small
-without adding a browser runtime dependency.
+normalized part-number character. Manual set search loads one group at a time.
+Buildable-set discovery first tries SQLite/MySQL, then scans the CSV groups in
+descending set size with a result limit. This keeps the seed/fallback file count
+small without adding a browser runtime dependency.
 
 ### `data/colors.csv`
 

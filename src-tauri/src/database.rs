@@ -341,6 +341,58 @@ pub fn search_set_records(
 }
 
 #[tauri::command]
+pub fn find_buildable_set_records(
+    state: State<'_, DatabaseState>,
+    limit: i64,
+) -> Result<Vec<SetRecord>, String> {
+    let limit = limit.clamp(1, 200);
+    let connection = state
+        .connection
+        .lock()
+        .map_err(|_| "The database connection is unavailable.".to_string())?;
+    let mut statement = connection
+        .prepare(
+            "WITH owned AS (
+                SELECT lower(trim(part_number)) AS part_number, color, SUM(quantity) AS quantity
+                FROM inventory_items
+                WHERE quantity > 0
+                GROUP BY lower(trim(part_number)), color
+             ),
+             owned_total AS (
+                SELECT COALESCE(SUM(quantity), 0) AS quantity
+                FROM inventory_items
+                WHERE quantity > 0
+             )
+             SELECT s.set_number, s.name, s.year, s.num_parts, s.image_url, s.inventory_id
+             FROM sets s
+             JOIN set_parts sp ON sp.inventory_id = s.inventory_id
+             LEFT JOIN owned o ON o.part_number = lower(trim(sp.part_number)) AND o.color = sp.color
+             CROSS JOIN owned_total total
+             WHERE COALESCE(s.num_parts, 0) > 0
+               AND COALESCE(s.num_parts, 0) <= total.quantity
+             GROUP BY s.set_number, s.name, s.year, s.num_parts, s.image_url, s.inventory_id
+             HAVING SUM(CASE WHEN COALESCE(o.quantity, 0) >= sp.quantity THEN 0 ELSE 1 END) = 0
+             ORDER BY COALESCE(s.num_parts, 0) DESC, s.set_number COLLATE NOCASE
+             LIMIT ?1",
+        )
+        .map_err(|error| error.to_string())?;
+    statement
+        .query_map([limit], |row| {
+            Ok(SetRecord {
+                set_number: row.get(0)?,
+                name: row.get(1)?,
+                year: row.get(2)?,
+                num_parts: row.get(3)?,
+                image_url: row.get(4)?,
+                inventory_id: row.get(5)?,
+            })
+        })
+        .map_err(|error| error.to_string())?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
 pub fn load_sql_set_parts(
     state: State<'_, DatabaseState>,
     inventory_id: i64,

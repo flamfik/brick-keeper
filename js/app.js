@@ -1,10 +1,12 @@
-import { translate } from "./i18n.js?v=1.0b";
-import { parseCsvRows } from "./csv.js?v=1.0b";
+import { translate } from "./i18n.js?v=1.0b-grouped-colors";
+import { parseCsvRows } from "./csv.js?v=1.0b-grouped-colors";
 import {
   canonicalColorId,
+  groupInventoryByPartNumber,
   LEGACY_COLOR_IDS,
+  normalizePartNumber,
   upsertInventoryRecord
-} from "./inventory.js?v=1.0b";
+} from "./inventory.js?v=1.0b-grouped-colors";
 import {
   getFilePermission,
   isTauriRuntime,
@@ -14,7 +16,7 @@ import {
   storeFileHandle,
   supportsFileStorage,
   writeInventoryFile
-} from "./file-storage.js?v=1.0b";
+} from "./file-storage.js?v=1.0b-grouped-colors";
 import {
   CURRENT_SCHEMA_VERSION,
   loadStoredInventory,
@@ -22,31 +24,32 @@ import {
   requestPersistentStorage,
   saveInventory,
   serializeInventory
-} from "./storage.js?v=1.0b";
+} from "./storage.js?v=1.0b-grouped-colors";
 import {
   configureMysqlDatabase,
   getMysqlStatus,
   loadMysqlInventory,
   replaceMysqlInventory
-} from "./mysql-storage.js?v=1.0b";
+} from "./mysql-storage.js?v=1.0b-grouped-colors";
 import {
   loadSqlColors,
   loadSqlInventory,
   replaceSqlInventory,
   searchSqlParts,
   supportsSqlStorage
-} from "./sql-storage.js?v=1.0b";
-import { listSnapshots, saveSnapshot, takeLatestSnapshot } from "./backups.js?v=1.0b";
+} from "./sql-storage.js?v=1.0b-grouped-colors";
+import { listSnapshots, saveSnapshot, takeLatestSnapshot } from "./backups.js?v=1.0b-grouped-colors";
 import {
   calculateMissingParts,
   findCatalogPhoto,
+  findBuildableSets,
   loadSetParts,
   searchSets
-} from "./set-catalog.js?v=1.0b";
-import { scannerSupported, startScanner, stopScanner } from "./scanner.js?v=1.0b";
+} from "./set-catalog.js?v=1.0b-grouped-colors";
+import { scannerSupported, startScanner, stopScanner } from "./scanner.js?v=1.0b-grouped-colors";
 
-const DATA_URL = "./data/bricks.json?v=1.0b";
-const COLORS_URL = "./data/colors.csv?v=1.0b";
+const DATA_URL = "./data/bricks.json?v=1.0b-grouped-colors";
+const COLORS_URL = "./data/colors.csv?v=1.0b-grouped-colors";
 const CATALOG_URL = "./data/catalog";
 const MAX_IMAGE_FILE_SIZE = 10 * 1024 * 1024;
 const MAX_IMAGE_DIMENSION = 1200;
@@ -106,6 +109,7 @@ let renderedItems = [];
 let renderedItemCount = 0;
 let renderObserver;
 let scannerTarget;
+let setRequestId = 0;
 
 const elements = {
   grid: document.querySelector("#brick-grid"),
@@ -169,6 +173,8 @@ Object.assign(elements, {
   setSearch: document.querySelector("#set-search"),
   setSearchResults: document.querySelector("#set-search-results"),
   setDetails: document.querySelector("#set-details"),
+  buildableSetsButton: document.querySelector("#buildable-sets-button"),
+  buildableSetsStatus: document.querySelector("#buildable-sets-status"),
   backupsDialog: document.querySelector("#backups-dialog"),
   backupsList: document.querySelector("#backups-list"),
   scannerDialog: document.querySelector("#scanner-dialog"),
@@ -432,6 +438,7 @@ function bindEvents() {
     button.addEventListener("click", () => elements.databaseDialog.close());
   });
   elements.setsButton.addEventListener("click", openSetsDialog);
+  elements.buildableSetsButton.addEventListener("click", showBuildableSets);
   elements.backupsButton.addEventListener("click", openBackupsDialog);
   elements.undoButton.addEventListener("click", undoLastChange);
   elements.scanPartButton.addEventListener("click", () => openScanner(elements.partNumber));
@@ -632,8 +639,9 @@ function render() {
 function renderStats() {
   const totalQuantity = state.items.reduce((sum, item) => sum + item.quantity, 0);
   const colors = [...new Set(state.items.map((item) => canonicalColorId(item.color)))];
+  const uniqueParts = new Set(state.items.map((item) => normalizePartNumber(item.partNumber)).filter(Boolean));
 
-  elements.statParts.textContent = formatNumber(state.items.length);
+  elements.statParts.textContent = formatNumber(uniqueParts.size);
   elements.statItems.textContent = formatNumber(totalQuantity);
   elements.statColors.textContent = formatNumber(colors.length);
   elements.colorDots.replaceChildren(...colors.slice(0, 9).map((color) => {
@@ -645,24 +653,46 @@ function renderStats() {
 
 function getVisibleItems() {
   const { search, category, color, sort } = state.filters;
-  const visible = state.items.filter((item) => {
+  return state.items.filter((item) => {
     const searchable = `${item.name} ${item.partNumber}`.toLocaleLowerCase(state.language);
     return (!search || searchable.includes(search)) &&
       (!category || item.category === category) &&
       (!color || canonicalColorId(item.color) === color);
   });
+}
 
-  // Sort a filtered copy, never state.items, so the saved insertion order and
-  // "recently added" semantics remain stable.
-  return visible.sort((a, b) => {
+function getVisibleGroups() {
+  const { sort } = state.filters;
+  const groups = groupInventoryByPartNumber(getVisibleItems()).map((group) => {
+    const variants = group.variants
+      .slice()
+      .sort((a, b) => getColorLabel(a.color).localeCompare(getColorLabel(b.color), state.language, {
+        sensitivity: "base"
+      }));
+    const representative = variants.find((item) => item.image || item.catalogImage) ?? variants[0];
+    const latest = variants.reduce((date, item) => (
+      Math.max(date, new Date(item.updatedAt ?? item.createdAt ?? 0).getTime())
+    ), 0);
+
+    return {
+      ...group,
+      variants,
+      representative,
+      latest
+    };
+  });
+
+  // Sort a grouped copy, never state.items, so saved insertion order and
+  // mutation semantics remain stable.
+  return groups.sort((a, b) => {
     if (sort === "quantity-desc") return b.quantity - a.quantity;
-    if (sort === "recent") return new Date(b.createdAt) - new Date(a.createdAt);
-    return a.name.localeCompare(b.name, state.language, { sensitivity: "base" });
+    if (sort === "recent") return b.latest - a.latest;
+    return a.representative.name.localeCompare(b.representative.name, state.language, { sensitivity: "base" });
   });
 }
 
 function renderInventory() {
-  renderedItems = getVisibleItems();
+  renderedItems = getVisibleGroups();
   renderedItemCount = 0;
   renderObserver?.disconnect();
   elements.grid.replaceChildren();
@@ -671,7 +701,7 @@ function renderInventory() {
   elements.emptyState.hidden = renderedItems.length > 0;
   elements.resultsCount.textContent = t("results", {
     visible: formatNumber(renderedItems.length),
-    total: formatNumber(state.items.length)
+    total: formatNumber(groupInventoryByPartNumber(state.items).length)
   });
   elements.clearFilters.hidden = !Object.values(state.filters).some((value) => (
     value && value !== "name"
@@ -686,7 +716,7 @@ function renderInventory() {
 function appendInventoryBatch() {
   const nextItems = renderedItems.slice(renderedItemCount, renderedItemCount + RENDER_BATCH_SIZE);
   const fragment = document.createDocumentFragment();
-  nextItems.forEach((item) => fragment.append(createBrickCard(item)));
+  nextItems.forEach((group) => fragment.append(createBrickGroupCard(group)));
   renderedItemCount += nextItems.length;
 
   const sentinel = document.createElement("div");
@@ -726,6 +756,7 @@ function createBrickCard(item) {
   card.querySelector(".location-label").textContent = item.location || "—";
   card.querySelector(".quantity").textContent = formatNumber(item.quantity);
   card.querySelector(".edit-button").title = t("edit");
+  card.querySelector(".copy-button").title = t("copyBrick");
   card.querySelector(".delete-button").title = t("delete");
   card.querySelector(".decrease-button").setAttribute("aria-label", t("decreaseQuantity"));
   card.querySelector(".increase-button").setAttribute("aria-label", t("increaseQuantity"));
@@ -736,18 +767,162 @@ function createBrickCard(item) {
   return card;
 }
 
+function createBrickGroupCard(group) {
+  const card = elements.cardTemplate.content.firstElementChild.cloneNode(true);
+  const item = group.representative;
+  const color = getColorHex(item.color);
+  const photo = card.querySelector(".brick-photo");
+  const model = card.querySelector(".brick-model");
+
+  card.dataset.id = item.id;
+  card.dataset.group = group.key;
+  card.dataset.variantCount = String(group.variants.length);
+  card.dataset.expanded = "false";
+  card.setAttribute("aria-expanded", "false");
+  card.classList.toggle("is-grouped", group.variants.length > 1);
+  card.querySelector(".category-badge").textContent = t(`categories.${item.category}`);
+  model.style.setProperty("--brick-color", color);
+  const image = item.image || item.catalogImage;
+  if (image) {
+    photo.src = image;
+    photo.alt = item.name;
+    photo.hidden = false;
+    model.hidden = true;
+  }
+  card.querySelector(".part-number").textContent = `# ${group.partNumber}`;
+  card.querySelector("h3").textContent = item.name;
+  card.querySelector(".color-label").style.setProperty("--dot-color", color);
+  card.querySelector(".color-label b").textContent = group.colorCount > 1
+    ? t("colorVariants", { count: formatNumber(group.colorCount) })
+    : getColorLabel(item.color);
+  card.querySelector(".location-label").textContent = group.variants.length > 1
+    ? t("partVariants", { count: formatNumber(group.variants.length) })
+    : item.location || "-";
+  card.querySelector(".quantity").textContent = formatNumber(group.quantity);
+  card.querySelector(".edit-button").title = t("edit");
+  card.querySelector(".copy-button").title = t("copyBrick");
+  card.querySelector(".delete-button").title = t("delete");
+  card.querySelector(".decrease-button").setAttribute("aria-label", t("decreaseQuantity"));
+  card.querySelector(".increase-button").setAttribute("aria-label", t("increaseQuantity"));
+  card.querySelector(".variant-toggle").textContent = t("showColors", {
+    count: formatNumber(group.colorCount)
+  });
+  renderVariantList(card.querySelector(".variant-list"), group.variants);
+  card.querySelectorAll("[data-i18n]").forEach((node) => {
+    node.textContent = t(node.dataset.i18n);
+  });
+
+  return card;
+}
+
+function renderVariantList(container, variants) {
+  container.replaceChildren(...variants.map((item) => {
+    const row = document.createElement("div");
+    const color = document.createElement("span");
+    const label = document.createElement("span");
+    const quantity = document.createElement("strong");
+    const actions = document.createElement("div");
+
+    row.className = "variant-row";
+    row.dataset.id = item.id;
+    color.className = "variant-color";
+    color.style.background = getColorHex(item.color);
+    label.textContent = getColorLabel(item.color);
+    quantity.textContent = t("variantQuantity", { quantity: formatNumber(item.quantity) });
+    actions.className = "variant-actions";
+    actions.append(
+      createVariantButton("edit", t("edit")),
+      createVariantButton("copy", t("copyBrick")),
+      createVariantButton("decrease", "-", t("decreaseQuantity")),
+      createVariantButton("increase", "+", t("increaseQuantity")),
+      createVariantButton("delete", t("delete"))
+    );
+    row.append(color, label, quantity, actions);
+    return row;
+  }));
+}
+
+function createVariantButton(action, label, title = label) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "variant-action";
+  button.dataset.variantAction = action;
+  button.textContent = label;
+  button.title = title;
+  button.setAttribute("aria-label", title);
+  return button;
+}
+
 function handleGridAction(event) {
   const button = event.target.closest("button");
   const card = event.target.closest(".brick-card");
-  if (!button || !card) return;
+  if (!card) return;
+
+  if (!button) {
+    if (!event.target.closest(".variant-list")) toggleVariantList(card);
+    return;
+  }
+
+  if (button.classList.contains("variant-toggle")) {
+    toggleVariantList(card);
+    return;
+  }
+
+  if (button.dataset.variantAction) {
+    handleVariantAction(button);
+    return;
+  }
 
   const item = state.items.find((candidate) => candidate.id === card.dataset.id);
   if (!item) return;
 
-  if (button.classList.contains("edit-button")) openEditor(item);
-  if (button.classList.contains("delete-button")) requestDelete(item.id);
+  if (button.classList.contains("edit-button")) {
+    openEditor(item);
+    return;
+  }
+  if (button.classList.contains("copy-button")) {
+    openEditor({ ...item, id: "", quantity: 1 }, { copy: true });
+    return;
+  }
+  if (button.classList.contains("delete-button")) {
+    requestDelete(item.id);
+    return;
+  }
   if (button.classList.contains("increase-button")) updateQuantity(item, 1);
   if (button.classList.contains("decrease-button")) updateQuantity(item, -1);
+}
+
+function toggleVariantList(card) {
+  const list = card.querySelector(".variant-list");
+  const toggle = card.querySelector(".variant-toggle");
+  const expanded = card.dataset.expanded === "true";
+  const nextExpanded = !expanded;
+
+  card.dataset.expanded = String(nextExpanded);
+  card.setAttribute("aria-expanded", String(nextExpanded));
+  toggle.setAttribute("aria-expanded", String(nextExpanded));
+  toggle.textContent = t(nextExpanded ? "hideColors" : "showColors", {
+    count: formatNumber(Number(card.dataset.variantCount) || 0)
+  });
+  list.hidden = !nextExpanded;
+}
+
+function handleVariantAction(button) {
+  const row = button.closest(".variant-row");
+  const item = state.items.find((candidate) => candidate.id === row?.dataset.id);
+  if (!item) return;
+
+  if (button.dataset.variantAction === "edit") {
+    openEditor(item);
+  } else if (button.dataset.variantAction === "copy") {
+    openEditor({ ...item, id: "", quantity: 1 }, { copy: true });
+  } else if (button.dataset.variantAction === "delete") {
+    requestDelete(item.id);
+  } else if (button.dataset.variantAction === "increase") {
+    updateQuantity(item, 1);
+  } else if (button.dataset.variantAction === "decrease") {
+    updateQuantity(item, -1);
+  }
 }
 
 function updateQuantity(item, delta) {
@@ -759,7 +934,8 @@ function updateQuantity(item, delta) {
   commitItems(nextItems);
 }
 
-function openEditor(item = null) {
+function openEditor(item = null, options = {}) {
+  const isCopy = Boolean(options.copy);
   elements.brickForm.reset();
   closeCatalogSuggestions();
   setPhotoPreview(item?.image ?? item?.catalogImage ?? null, Boolean(item?.catalogImage && !item?.image));
@@ -770,7 +946,7 @@ function openEditor(item = null) {
       material: item.catalog.material
     })
     : t("catalogHint"), Boolean(item?.catalog));
-  document.querySelector("#brick-id").value = item?.id ?? "";
+  document.querySelector("#brick-id").value = isCopy ? "" : item?.id ?? "";
   document.querySelector("#brick-quantity").value = item?.quantity ?? 1;
   document.querySelector("#brick-name").value = item?.name ?? "";
   document.querySelector("#brick-part-number").value = item?.partNumber ?? "";
@@ -781,7 +957,7 @@ function openEditor(item = null) {
   document.querySelector("#brick-location").value = item?.location ?? "";
   document.querySelector("#brick-year").value = item?.year ?? "";
   document.querySelector("#brick-notes").value = item?.notes ?? "";
-  elements.dialogTitle.textContent = t(item ? "editBrick" : "newBrick");
+  elements.dialogTitle.textContent = t(isCopy ? "copyBrickTitle" : item ? "editBrick" : "newBrick");
   elements.brickDialog.showModal();
   document.querySelector("#brick-name").focus();
 }
@@ -1099,8 +1275,10 @@ function handleDeleteConfirmation() {
 }
 
 function openSetsDialog() {
+  setRequestId += 1;
   elements.setSearch.value = "";
   elements.setSearchResults.replaceChildren();
+  setBuildableStatus(t("buildableSetsHint"));
   elements.setDetails.hidden = true;
   elements.setsDialog.showModal();
   elements.setSearch.focus();
@@ -1108,28 +1286,85 @@ function openSetsDialog() {
 
 async function handleSetSearch() {
   const query = elements.setSearch.value.trim();
+  const requestId = ++setRequestId;
   elements.setDetails.hidden = true;
+  setBuildableStatus(t("buildableSetsHint"));
   if (query.length < 2) {
     elements.setSearchResults.replaceChildren();
     return;
   }
   try {
     const matches = await searchSets(query);
-    elements.setSearchResults.replaceChildren(...matches.map((set) => {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "set-result";
-      button.dataset.set = JSON.stringify(set);
-      const name = document.createElement("strong");
-      name.textContent = `${set[0]} - ${set[1]}`;
-      const meta = document.createElement("span");
-      meta.textContent = `${set[2]} / ${formatNumber(set[3])}`;
-      button.append(name, meta);
-      return button;
-    }));
+    if (requestId !== setRequestId) return;
+    renderSetResults(matches);
   } catch (error) {
     console.error("Set search failed:", error);
+    if (requestId === setRequestId) setBuildableStatus(t("buildableSetsError"), true);
   }
+}
+
+async function showBuildableSets() {
+  const requestId = ++setRequestId;
+  elements.setSearch.value = "";
+  elements.setSearchResults.replaceChildren();
+  elements.setDetails.hidden = true;
+  elements.buildableSetsButton.disabled = true;
+  setBuildableStatus(t("buildableSetsChecking", {
+    checked: formatNumber(0),
+    total: "...",
+    found: formatNumber(0)
+  }));
+
+  try {
+    if (sqlStorageEnabled) await sqlSaveQueue.catch(() => undefined);
+    if (mysqlStorageEnabled) await mysqlSaveQueue.catch(() => undefined);
+    if (requestId !== setRequestId) return;
+
+    const matches = await findBuildableSets(state.items, {
+      limit: 50,
+      useSql: sqlStorageEnabled,
+      useMysql: mysqlStorageEnabled,
+      onProgress: ({ checked, total, found }) => {
+        if (requestId !== setRequestId) return;
+        setBuildableStatus(t("buildableSetsChecking", {
+          checked: formatNumber(checked),
+          total: formatNumber(total),
+          found: formatNumber(found)
+        }));
+      }
+    });
+    if (requestId !== setRequestId) return;
+
+    renderSetResults(matches);
+    setBuildableStatus(matches.length
+      ? t("buildableSetsFound", { count: formatNumber(matches.length) })
+      : t("buildableSetsEmpty"));
+  } catch (error) {
+    console.error("Buildable set lookup failed:", error);
+    if (requestId === setRequestId) setBuildableStatus(t("buildableSetsError"), true);
+  } finally {
+    elements.buildableSetsButton.disabled = false;
+  }
+}
+
+function renderSetResults(sets) {
+  elements.setSearchResults.replaceChildren(...sets.map((set) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "set-result";
+    button.dataset.set = JSON.stringify(set);
+    const name = document.createElement("strong");
+    name.textContent = `${set[0]} - ${set[1]}`;
+    const meta = document.createElement("span");
+    meta.textContent = `${set[2] ?? "-"} / ${formatNumber(set[3] ?? 0)}`;
+    button.append(name, meta);
+    return button;
+  }));
+}
+
+function setBuildableStatus(message, isError = false) {
+  elements.buildableSetsStatus.textContent = message;
+  elements.buildableSetsStatus.classList.toggle("is-error", isError);
 }
 
 async function handleSetSelection(event) {
@@ -1388,7 +1623,7 @@ async function registerServiceWorker() {
 
   try {
     serviceWorkerRegistration = await navigator.serviceWorker.register(
-      "./service-worker.js?v=1.0b",
+      "./service-worker.js?v=1.0b-grouped-colors",
       { updateViaCache: "none" }
     );
 

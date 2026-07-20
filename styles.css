@@ -592,6 +592,76 @@ h2 {
   color: #a92824;
 }
 
+.copy-button:hover {
+  color: var(--green);
+}
+
+.brick-card.is-grouped .quantity-control .quantity-button {
+  display: none;
+}
+
+.brick-card.is-grouped .card-actions .edit-button,
+.brick-card.is-grouped .card-actions .delete-button {
+  display: none;
+}
+
+.variant-toggle {
+  width: 100%;
+  margin-top: 14px;
+  padding: 9px 10px;
+  color: var(--green);
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--green) 8%, white);
+  font-weight: 800;
+}
+
+.variant-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.variant-list[hidden] {
+  display: none;
+}
+
+.variant-row {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  background: rgb(255 255 255 / 64%);
+}
+
+.variant-color {
+  width: 14px;
+  height: 14px;
+  border: 1px solid rgb(0 0 0 / 18%);
+  border-radius: 50%;
+}
+
+.variant-row strong {
+  font-size: 12px;
+}
+
+.variant-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.variant-action {
+  padding: 5px 7px;
+  color: var(--ink);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  font-size: 11px;
+  font-weight: 800;
+}
+
 .brick-model {
   position: relative;
   width: 142px;
@@ -1072,6 +1142,19 @@ dialog::backdrop {
 .dialog-panel { padding: 28px; }
 .set-search-row { margin: 22px 0 14px; }
 .set-search-row input { padding: 12px; border: 1px solid var(--line); }
+.set-buildable-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 0 0 16px;
+}
+.set-status {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+.set-status.is-error { color: var(--red); }
 .set-search-results, .backups-list, .missing-parts { display: grid; gap: 8px; }
 .set-result, .backup-row, .missing-part {
   display: flex;
@@ -1223,6 +1306,11 @@ dialog::backdrop {
   .search-field,
   .field-wide {
     grid-column: auto;
+  }
+
+  .set-buildable-row {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .brick-grid {

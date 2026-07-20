@@ -1,4 +1,4 @@
-# Brick Keeper v1.0b
+# Brick Keeper v1.0rc
 
 Brick Keeper is a fast browser and Tauri 2 desktop organizer for a LEGO brick
 collection. It supports Polish, English and Spanish and keeps collection data
@@ -11,11 +11,14 @@ on the user's computer.
 
 - collection dashboard with totals for parts, pieces and colors;
 - instant search, category/color filters and sorting;
+- grouped cards for parts that share the same part number;
 - adding, editing, deleting and quickly counting parts;
+- copying an existing part as a starting point for another color variant;
 - optional part photos, resized and compressed locally before saving;
 - automatic catalog photos selected by part number and color;
 - SQLite-backed part-number lookup in the Tauri desktop shell;
 - set search with owned/missing-part comparison;
+- buildable-set discovery from the current inventory;
 - barcode and QR scanning where the browser supports `BarcodeDetector`;
 - twenty local IndexedDB snapshots with one-click undo and restore;
 - automatic migration of older collection files to schema version 2;
@@ -59,15 +62,24 @@ npm install
 npm run tauri:dev
 ```
 
-Create an installer or platform bundle with:
+The recommended public distribution is the Tauri desktop installer. It uses
+local SQLite storage and does not require WAMP, MySQL, MariaDB, Node.js or Rust
+on the user's computer.
+
+Validate and create the Windows installer with:
 
 ```bash
+npm ci
+npm test
 npm run tauri:build
 ```
 
 `tools/build-tauri.mjs` copies only the runtime HTML, CSS, JavaScript, icons and
 CSV seed data to `dist/`. On first run, Tauri imports that seed into SQLite.
 The repository, tests and raw `BrickKeeper_DB` source files are not shipped.
+The generated installer is written under `src-tauri/target/release/bundle/`.
+See [`docs/RELEASE.md`](docs/RELEASE.md) for the GitHub Release workflow and
+clean-machine smoke test.
 
 ## Project Structure
 
@@ -81,9 +93,11 @@ The repository, tests and raw `BrickKeeper_DB` source files are not shipped.
 |-- api/
 |   |-- database.php      # localhost-only MySQL/MariaDB configuration API
 |   |-- inventory.php     # MySQL/MariaDB inventory API for WAMP
+|   |-- sets.php          # buildable-set lookup API for WAMP
 |   `-- schema/mysql.sql  # MySQL/MariaDB table schema
 |-- docs/
-|   `-- ARCHITECTURE.md   # technical architecture and extension guide
+|   |-- ARCHITECTURE.md   # technical architecture and extension guide
+|   `-- RELEASE.md        # Windows installer release procedure
 |-- js/
 |   |-- app.js            # state, rendering and user interaction
 |   |-- csv.js            # compact CSV parser/stringifier
@@ -191,9 +205,10 @@ reference version changes. JSON file import/export remains as the human-readable
 migration and backup boundary.
 
 The WAMP mode creates the same table names in MySQL/MariaDB through
-`api/schema/mysql.sql`. The current PHP bridge stores and loads the active
-inventory from `inventory_items`; reference catalogs continue to use the CSV
-fallback in the browser.
+`api/schema/mysql.sql`. The PHP bridge stores and loads the active inventory
+from `inventory_items`. If `sets` and `set_parts` are populated, `api/sets.php`
+calculates buildable sets in MySQL; otherwise the browser falls back to the
+generated CSV reference files.
 
 ## Reference Sources
 

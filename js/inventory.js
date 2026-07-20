@@ -19,6 +19,34 @@ export function normalizePartNumber(value) {
   return String(value).trim().toLocaleLowerCase("en");
 }
 
+export function groupInventoryByPartNumber(items) {
+  const groups = new Map();
+
+  for (const item of items) {
+    const key = normalizePartNumber(item.partNumber);
+    if (!key) continue;
+
+    if (!groups.has(key)) {
+      groups.set(key, {
+        key,
+        partNumber: item.partNumber,
+        variants: [],
+        quantity: 0,
+        colorCount: 0
+      });
+    }
+
+    const group = groups.get(key);
+    group.variants.push(item);
+    group.quantity += Number(item.quantity) || 0;
+  }
+
+  return [...groups.values()].map((group) => ({
+    ...group,
+    colorCount: new Set(group.variants.map((item) => canonicalColorId(item.color))).size
+  }));
+}
+
 export function upsertInventoryRecord(items, record, existingId = null) {
   const duplicate = items.find((item) => (
     item.id !== existingId &&
