@@ -85,7 +85,9 @@ Contains the Tauri 2 application shell. `src/database.rs` opens
 `brick-keeper.sqlite3`, applies `src-tauri/sql/schema.sql`, imports bundled CSV
 seed files into reference tables and exposes narrow SQL commands. Legacy JSON
 file commands remain for migration and import/export workflows. The frontend is
-copied to `dist/` before release builds, and `withGlobalTauri` provides the small
+copied to `dist/` before release builds. The large reference catalog is bundled
+separately as `$RESOURCE/data` so Rust can read it as normal files without
+duplicating it in the embedded frontend. `withGlobalTauri` provides the small
 `window.__TAURI__.core.invoke` bridge without adding a frontend bundler.
 
 The service worker is disabled inside Tauri because the desktop bundle already

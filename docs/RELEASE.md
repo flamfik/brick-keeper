@@ -10,7 +10,9 @@ normal user installation.
 The Windows installer MVP includes:
 
 - the Tauri desktop shell;
-- bundled HTML, CSS, JavaScript, icons and generated CSV reference data;
+- bundled HTML, CSS, JavaScript and icons;
+- generated CSV reference data installed under the native Tauri resource
+  directory for first-run SQLite import;
 - local SQLite persistence created on first launch;
 - catalog lookup, set lookup and buildable-set discovery through SQLite;
 - JSON import/export for migration and backups.

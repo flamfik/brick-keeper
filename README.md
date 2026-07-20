@@ -75,8 +75,9 @@ npm run tauri:build
 ```
 
 `tools/build-tauri.mjs` copies only the runtime HTML, CSS, JavaScript, icons and
-CSV seed data to `dist/`. On first run, Tauri imports that seed into SQLite.
-The repository, tests and raw `BrickKeeper_DB` source files are not shipped.
+small frontend fallback files to `dist/`. The generated CSV reference catalog
+is packaged separately as a native resource and imported into SQLite on first
+run. The repository, tests and raw `BrickKeeper_DB` source files are not shipped.
 The generated installer is written under `src-tauri/target/release/bundle/`.
 See [`docs/RELEASE.md`](docs/RELEASE.md) for the GitHub Release workflow and
 clean-machine smoke test.

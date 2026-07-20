@@ -134,6 +134,11 @@ assert.ok(gitignore.includes("api/config/database.local.php"), "Local MySQL cred
 assert.equal(tauriConfig.app.withGlobalTauri, true);
 assert.equal(tauriConfig.build.frontendDist, "../dist");
 assert.deepEqual(tauriConfig.bundle.targets, ["nsis"]);
+assert.equal(
+  tauriConfig.bundle.resources?.["../data/"],
+  "data/",
+  "Tauri installer must bundle the CSV reference database under $RESOURCE/data."
+);
 for (const command of [
   "database_status",
   "find_buildable_set_records",

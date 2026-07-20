@@ -32,6 +32,9 @@
     "publisher": "Brick Keeper contributors",
     "shortDescription": "Standalone LEGO brick collection organizer",
     "longDescription": "Brick Keeper is a standalone LEGO brick collection organizer with local SQLite storage.",
+    "resources": {
+      "../data/": "data/"
+    },
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

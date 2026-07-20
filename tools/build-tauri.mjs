@@ -10,14 +10,21 @@ const files = [
   "service-worker.js",
   "styles.css"
 ];
-const directories = ["data", "icons", "js"];
+const directories = ["icons", "js"];
+const frontendDataFiles = ["bricks.json", "colors.csv"];
 
-// Tauri should bundle runtime CSV assets, never the repository or raw DB source.
+// Large reference CSV files are native bundle resources imported into SQLite.
+// The frontend keeps only its small startup and color-catalog fallbacks.
 await rm(output, { recursive: true, force: true });
 await mkdir(output, { recursive: true });
+await mkdir(join(output, "data"), { recursive: true });
 
 await Promise.all([
   ...files.map((name) => cp(join(root, name), join(output, name))),
+  ...frontendDataFiles.map((name) => cp(
+    join(root, "data", name),
+    join(output, "data", name)
+  )),
   ...directories.map((name) => cp(
     join(root, name),
     join(output, name),
