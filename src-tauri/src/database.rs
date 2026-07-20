@@ -246,7 +246,7 @@ pub fn load_color_records(state: State<'_, DatabaseState>) -> Result<Vec<ColorRe
     let mut statement = connection
         .prepare("SELECT id, name, hex, transparent, part_count FROM colors ORDER BY part_count DESC, name COLLATE NOCASE ASC")
         .map_err(|error| error.to_string())?;
-    statement
+    let records = statement
         .query_map([], |row| {
             Ok(ColorRecord {
                 id: row.get(0)?,
@@ -258,7 +258,8 @@ pub fn load_color_records(state: State<'_, DatabaseState>) -> Result<Vec<ColorRe
         })
         .map_err(|error| error.to_string())?
         .collect::<Result<Vec<_>, _>>()
-        .map_err(|error| error.to_string())
+        .map_err(|error| error.to_string())?;
+    Ok(records)
 }
 
 #[tauri::command]
@@ -285,7 +286,7 @@ pub fn search_catalog_parts(
              LIMIT ?2",
         )
         .map_err(|error| error.to_string())?;
-    statement
+    let records = statement
         .query_map(params![normalized, limit], |row| {
             Ok(PartRecord {
                 part_number: row.get(0)?,
@@ -297,7 +298,8 @@ pub fn search_catalog_parts(
         })
         .map_err(|error| error.to_string())?
         .collect::<Result<Vec<_>, _>>()
-        .map_err(|error| error.to_string())
+        .map_err(|error| error.to_string())?;
+    Ok(records)
 }
 
 #[tauri::command]
@@ -324,7 +326,7 @@ pub fn search_set_records(
              LIMIT ?2",
         )
         .map_err(|error| error.to_string())?;
-    statement
+    let records = statement
         .query_map(params![normalized, limit], |row| {
             Ok(SetRecord {
                 set_number: row.get(0)?,
@@ -337,7 +339,8 @@ pub fn search_set_records(
         })
         .map_err(|error| error.to_string())?
         .collect::<Result<Vec<_>, _>>()
-        .map_err(|error| error.to_string())
+        .map_err(|error| error.to_string())?;
+    Ok(records)
 }
 
 #[tauri::command]
@@ -376,7 +379,7 @@ pub fn find_buildable_set_records(
              LIMIT ?1",
         )
         .map_err(|error| error.to_string())?;
-    statement
+    let records = statement
         .query_map([limit], |row| {
             Ok(SetRecord {
                 set_number: row.get(0)?,
@@ -389,7 +392,8 @@ pub fn find_buildable_set_records(
         })
         .map_err(|error| error.to_string())?
         .collect::<Result<Vec<_>, _>>()
-        .map_err(|error| error.to_string())
+        .map_err(|error| error.to_string())?;
+    Ok(records)
 }
 
 #[tauri::command]
@@ -408,7 +412,7 @@ pub fn load_sql_set_parts(
              WHERE inventory_id = ?1",
         )
         .map_err(|error| error.to_string())?;
-    statement
+    let records = statement
         .query_map([inventory_id], |row| {
             Ok(SetPartRecord {
                 part_number: row.get(0)?,
@@ -418,7 +422,8 @@ pub fn load_sql_set_parts(
         })
         .map_err(|error| error.to_string())?
         .collect::<Result<Vec<_>, _>>()
-        .map_err(|error| error.to_string())
+        .map_err(|error| error.to_string())?;
+    Ok(records)
 }
 
 #[tauri::command]
