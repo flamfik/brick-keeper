@@ -1,6 +1,6 @@
 [package]
 name = "brick-keeper"
-version = "1.0.0-beta"
+version = "1.0.0-rc"
 description = "Standalone LEGO brick collection organizer"
 authors = ["Brick Keeper contributors"]
 edition = "2021"
